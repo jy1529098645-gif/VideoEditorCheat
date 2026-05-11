@@ -1,0 +1,7 @@
+repo/
+.DS_Store
+Thumbs.db
+*.log
+node_modules/
+.vscode/
+.claude/settings.local.json

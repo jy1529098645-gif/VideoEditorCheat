@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <title>Cheat on Content · 网红作弊器</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">CoC</div>
+        <div class="brand-text">
+          <div class="brand-name">Cheat on Content</div>
+          <div class="brand-sub">网红作弊器</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-item active" data-view="dashboard">
+          <span class="nav-icon">📊</span><span>看板</span>
+        </button>
+        <button class="nav-item" data-view="scripts">
+          <span class="nav-icon">📝</span><span>稿子</span>
+          <span class="nav-badge" data-count="scripts"></span>
+        </button>
+        <button class="nav-item" data-view="score">
+          <span class="nav-icon">🎯</span><span>打分</span>
+        </button>
+        <button class="nav-item" data-view="predict">
+          <span class="nav-icon">🔮</span><span>预测</span>
+        </button>
+        <button class="nav-item" data-view="pipeline">
+          <span class="nav-icon">🚀</span><span>拍 & 发</span>
+          <span class="nav-badge" data-count="buffer"></span>
+        </button>
+        <button class="nav-item" data-view="retro">
+          <span class="nav-icon">📈</span><span>复盘</span>
+          <span class="nav-badge warn" data-count="pendingRetros"></span>
+        </button>
+        <button class="nav-item" data-view="rubric">
+          <span class="nav-icon">🧬</span><span>Rubric</span>
+        </button>
+        <button class="nav-item" data-view="bump">
+          <span class="nav-icon">⚡</span><span>升级</span>
+        </button>
+        <button class="nav-item" data-view="candidates">
+          <span class="nav-icon">🔥</span><span>候选池</span>
+          <span class="nav-badge" data-count="candidates"></span>
+        </button>
+        <button class="nav-item" data-view="benchmark">
+          <span class="nav-icon">🎬</span><span>对标账号</span>
+        </button>
+        <button class="nav-item" data-view="trends">
+          <span class="nav-icon">📡</span><span>抓热点</span>
+        </button>
+        <button class="nav-item" data-view="settings">
+          <span class="nav-icon">⚙️</span><span>设置</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="footer-stat">
+          <div class="footer-label">校准样本</div>
+          <div class="footer-value" id="footer-calibration">0 / 5</div>
+        </div>
+        <div class="footer-stat">
+          <div class="footer-label">Rubric</div>
+          <div class="footer-value" id="footer-rubric">v0</div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-title">
+          <h1 id="page-title">看板</h1>
+          <p id="page-sub">每条片子的判断都在这里被记账</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-ghost" id="btn-help" title="工作流说明">? 工作流</button>
+          <button class="btn btn-ghost" id="btn-export">导出</button>
+          <button class="btn btn-ghost" id="btn-import">导入</button>
+          <input type="file" id="import-file" accept=".json" hidden />
+        </div>
+      </header>
+
+      <section class="view" id="view-dashboard"></section>
+      <section class="view hidden" id="view-scripts"></section>
+      <section class="view hidden" id="view-score"></section>
+      <section class="view hidden" id="view-predict"></section>
+      <section class="view hidden" id="view-pipeline"></section>
+      <section class="view hidden" id="view-retro"></section>
+      <section class="view hidden" id="view-rubric"></section>
+      <section class="view hidden" id="view-bump"></section>
+      <section class="view hidden" id="view-candidates"></section>
+      <section class="view hidden" id="view-benchmark"></section>
+      <section class="view hidden" id="view-trends"></section>
+      <section class="view hidden" id="view-settings"></section>
+    </main>
+
+    <div id="modal-root"></div>
+    <div id="toast-root"></div>
+  </div>
+
+  <script src="js/storage.js?v=2"></script>
+  <script src="js/state.js?v=2"></script>
+  <script src="js/rubric.js?v=2"></script>
+  <script src="js/ui.js?v=2"></script>
+  <script src="js/views/dashboard.js?v=2"></script>
+  <script src="js/views/scripts.js?v=2"></script>
+  <script src="js/views/score.js?v=2"></script>
+  <script src="js/views/predict.js?v=2"></script>
+  <script src="js/views/pipeline.js?v=2"></script>
+  <script src="js/views/retro.js?v=2"></script>
+  <script src="js/views/rubric.js?v=2"></script>
+  <script src="js/views/bump.js?v=2"></script>
+  <script src="js/views/candidates.js?v=2"></script>
+  <script src="js/views/benchmark.js?v=2"></script>
+  <script src="js/views/trends.js?v=2"></script>
+  <script src="js/views/settings.js?v=2"></script>
+  <script src="js/app.js?v=2"></script>
+</body>
+</html>
