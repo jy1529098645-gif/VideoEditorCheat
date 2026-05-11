@@ -150,13 +150,13 @@
   }
 
   async function promoteToScript(c) {
-    await State.addScript({
+    const s = await State.addScript({
       title: c.title,
-      content: c.content || '// 候选已升为稿子，开始撰写…',
+      content: c.content || c.title,
       shortName: c.title
     });
     State.updateCandidate(c.id, { tier: 'done' });
-    UI.toast('已升为稿子，跳转……', 'success');
+    UI.toast(`已升为稿子 (auto-score: ${s.autoComposite || '—'})`, 'success');
     App.navigate('scripts');
   }
 

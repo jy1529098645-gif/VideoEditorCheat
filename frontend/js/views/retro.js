@@ -106,11 +106,13 @@
     const root = document.getElementById('view-retro');
     UI.clear(root);
 
-    const playsInp = el('input', { class: 'input', type: 'number', placeholder: '例如：710000（绝对值，非"w"）' });
+    const playsInp = el('input', { class: 'input', type: 'number', placeholder: '例如：710000（绝对值，非"w"）',
+      onInput: () => recomputeAutoBullets() });
     const likesInp = el('input', { class: 'input', type: 'number', placeholder: '例如：24000' });
     const commentsInp = el('input', { class: 'input', type: 'number', placeholder: '例如：899' });
     const savesInp = el('input', { class: 'input', type: 'number', placeholder: '例如：5251' });
-    const sharesInp = el('input', { class: 'input', type: 'number', placeholder: '例如：18000' });
+    const sharesInp = el('input', { class: 'input', type: 'number', placeholder: '例如：18000',
+      onInput: () => recomputeAutoBullets() });
     const sourceSel = el('select', { class: 'select' },
       el('option', { value: 'manual' }, '手动粘贴'),
       el('option', { value: 'adapter:douyin' }, 'adapter:douyin'),
@@ -119,13 +121,35 @@
       placeholder: '把 Top 评论粘进来，会和模因分类一起被归档' });
 
     // Verified / refuted / new observations as bullet lists
-    const verifiedItems = [''];
-    const refutedItems = [''];
+    const verifiedItems = [];
+    const refutedItems = [];
     const newObsItems = [''];
 
     const verifiedBox = el('div', { class: 'stack', style: { gap: '6px' } });
     const refutedBox = el('div', { class: 'stack', style: { gap: '6px' } });
     const newObsBox = el('div', { class: 'stack', style: { gap: '6px' } });
+    const autoBanner = el('div', { class: 'callout', style: { fontSize: '12px', padding: '8px 12px' } },
+      '🤖 等你填播放 + 分享数 → 自动对照预测因素 → 出验证/推翻 bullet');
+
+    function recomputeAutoBullets() {
+      if (!playsInp.value) return;
+      const auto = Scorer.autoRetroCompare(p, {
+        actualPlays: playsInp.value,
+        actualLikes: likesInp.value,
+        actualComments: commentsInp.value,
+        actualShares: sharesInp.value
+      });
+      // Replace contents with auto-suggestions (idempotent on each recompute)
+      verifiedItems.length = 0; refutedItems.length = 0;
+      auto.verified.forEach(v => verifiedItems.push(v));
+      auto.refuted.forEach(v => refutedItems.push(v));
+      if (verifiedItems.length === 0) verifiedItems.push('');
+      if (refutedItems.length === 0) refutedItems.push('');
+      renderArr(verifiedItems, verifiedBox, '✅ 引用具体数据点');
+      renderArr(refutedItems, refutedBox, '❌ "高置信度被推翻 → rubric bug"');
+      autoBanner.className = 'callout good';
+      autoBanner.textContent = `🤖 已根据实际数据自动生成 ${auto.verified.length} 条验证 + ${auto.refuted.length} 条推翻。改你不认同的。`;
+    }
     function renderArr(arr, box, ph) {
       UI.clear(box);
       arr.forEach((v, i) => {
@@ -189,15 +213,17 @@
         commentsBox
       ),
       el('div', { class: 'card', style: { marginTop: '16px' } },
-        el('div', { class: 'card-title' }, '③ ✅ 被验证'),
+        el('div', { class: 'card-title' }, '③ ✅ 被验证 / ❌ 被推翻'),
+        autoBanner,
+        el('div', { class: 'label', style: { marginTop: '10px' } }, '✅ 被验证'),
         verifiedBox
       ),
       el('div', { class: 'card', style: { marginTop: '16px' } },
-        el('div', { class: 'card-title' }, '④ ❌ 被推翻'),
+        el('div', { class: 'card-title' }, '❌ 被推翻'),
         refutedBox
       ),
       el('div', { class: 'card', style: { marginTop: '16px' } },
-        el('div', { class: 'card-title' }, '⑤ 🧠 需要写进 rubric_notes 的新观察',
+        el('div', { class: 'card-title' }, '④ 🧠 需要写进 rubric_notes 的新观察',
           el('span', { class: 'badge accent' }, '会自动进 rubric notes')),
         newObsBox
       ),

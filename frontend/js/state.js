@@ -144,11 +144,18 @@
 
   async function addScript(data) {
     const content = data.content || '';
-    // Article ID = sha256 of first-write content (matches spec)
     const id = data.id || await sha256_12(content + Date.now());
     const date = data.date || today();
     const short = (data.shortName || data.title || 'untitled').replace(/\s+/g, '-').slice(0, 30);
     const contentHash = await sha256_12(content);
+    // Auto-score from text — stored on the script for quick reuse
+    let autoScores = null;
+    let autoComposite = null;
+    if (window.Scorer && window.Rubric) {
+      autoScores = window.Scorer.scoreText(content);
+      const r = window.Rubric.getRubric(state.activeRubric);
+      autoComposite = window.Rubric.composite(autoScores, r);
+    }
     const script = {
       id,
       title: data.title || '未命名稿子',
@@ -157,6 +164,8 @@
       path: `scripts/${date}_${id}_${short}.md`,
       content,
       contentHash,
+      autoScores,
+      autoComposite,
       status: 'draft',
       createdAt: new Date().toISOString()
     };
@@ -209,6 +218,9 @@
       calibrationSamples: calibrationSamples(),
       confidence: data.confidence,
       scores: data.scores,
+      autoScores: data.autoScores || null,
+      scoredBy: data.scoredBy || 'claude',
+      userOverride: data.userOverride || null,
       composite: data.composite,
       bucket: data.bucket,
       probDistribution: data.probDistribution,
@@ -333,6 +345,17 @@
   }
 
   function addCandidate(data) {
+    // Auto-score from title + content when scores not provided
+    let scores = data.scores;
+    let composite = data.composite;
+    let predictedBucket = data.predictedBucket;
+    if (!scores && window.Scorer) {
+      const text = (data.content || '') + ' ' + (data.title || '');
+      scores = window.Scorer.scoreText(text);
+      const rubric = window.Rubric.getRubric(state.activeRubric);
+      composite = window.Rubric.composite(scores, rubric);
+      predictedBucket = window.Scorer.bucketFromComposite(composite);
+    }
     state.candidates.unshift({
       id: data.id || genId(),
       title: data.title,
@@ -340,9 +363,9 @@
       snapshotAt: data.snapshotAt || today(),
       tier: data.tier || 'tier2',
       readStatus: data.readStatus || 'unread',
-      composite: data.composite || null,
-      scores: data.scores || null,
-      predictedBucket: data.predictedBucket || '',
+      composite: composite || null,
+      scores: scores || null,
+      predictedBucket: predictedBucket || '',
       note: data.note || '',
       content: data.content || ''
     });

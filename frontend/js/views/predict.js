@@ -110,24 +110,26 @@
     const cal = State.calibrationSamples();
     const confidence = Rubric.confidenceFromSamples(cal);
 
-    // Local form state
-    const scores = {};
-    rubric.dimensions.forEach(d => scores[d.key] = 3);
-    const dist = [
-      { range: '<5w', percent: 10, headline: false, center: 0 },
-      { range: '5-30w', percent: 25, headline: false, center: 0 },
-      { range: '30-100w', percent: 40, headline: true, center: 50 },
-      { range: '>100w', percent: 15, headline: false, center: 0 },
-      { range: '>150w', percent: 10, headline: false, center: 0 }
+    // ============ AUTO-SCORE the script content ============
+    const autoScores = Scorer.scoreText(script.content);
+    const scores = { ...autoScores };
+    const autoComposite = Rubric.composite(scores, rubric);
+    const dist = Scorer.distFromComposite(autoComposite, cal);
+    const autoReason = Scorer.autoReason(scores, autoComposite);
+    const autoFactors = Scorer.autoFactors(scores);
+    const reasoningFactors = autoFactors.length > 0 ? [...autoFactors] : [
+      { factor: 'ER', direction: '强 +', confidence: '中', note: '' }
     ];
-    const reasoningFactors = [];
     const anchors = [];
+    const overrides = {}; // tracks which fields user changed
 
     // ---- Header + banner ----
-    const banner = el('div', { class: 'callout bad' },
-      el('div', { class: 'callout-title' }, '🛡 写完即 immutable'),
-      '提交后这段判断永久锁定——hook 拦截编辑。复盘只追加到下半段。'
-      + '如要重做：建一份 `_redo` 稿子，原版必须保留。'
+    const banner = el('div', { class: 'callout' },
+      el('div', { class: 'callout-title' }, '🤖 已自动评分 — 请复核'),
+      el('div', {}, '7 维评分、概率分布、一句话 reason、推理因素都已基于稿子文本启发式生成。' +
+        '你只需要 review 并改你不认同的字段——改动会自动标 +user_override，复盘时用来诊断"用户直觉 vs Claude 系统性偏离"。'),
+      el('div', { style: { marginTop: '6px' } },
+        el('strong', {}, '⚠ 提交后预测段永久 immutable，不可改。'))
     );
 
     const meta = el('div', { class: 'grid grid-4' },
@@ -149,12 +151,17 @@
       ),
       compositeEl
     );
-    const dimRows = rubric.dimensions.map(d => dimRow(d, scores, () => recomputeComposite()));
+    const dimRows = rubric.dimensions.map(d => dimRow(d, scores, autoScores, overrides, () => recomputeComposite()));
     function recomputeComposite() {
       compositeEl.textContent = Rubric.composite(scores, rubric).toFixed(2);
     }
-    // initialise active=3
-    dimRows.forEach(r => r.querySelectorAll('.score-btn')[3].classList.add('active'));
+    // initialise active to auto-scored values
+    dimRows.forEach((r, i) => {
+      const k = rubric.dimensions[i].key;
+      const v = scores[k];
+      const btn = r.querySelectorAll('.score-btn')[v];
+      if (btn) btn.classList.add('active');
+    });
     recomputeComposite();
 
     // ---- Step 2: bucket distribution ----
@@ -217,7 +224,7 @@
 
     // ---- Step 5: reason / counterfactuals / assumptions ----
     const reasonInput = el('textarea', { class: 'textarea', rows: '3',
-      placeholder: '核心驱动因素 + 最强反例约束 + 中枢预测' });
+      placeholder: '核心驱动因素 + 最强反例约束 + 中枢预测' }, autoReason);
     const cfHit = el('textarea', { class: 'textarea', rows: '2', placeholder: '验证 / 推翻 / 新增维度' });
     const cfHeadline = el('textarea', { class: 'textarea', rows: '2', placeholder: '基准线验证什么' });
     const cfMiss = el('textarea', { class: 'textarea', rows: '2', placeholder: '推翻什么核心判断' });
@@ -234,6 +241,7 @@
       if (!headline) { UI.toast('必须标记一个 headline bucket', 'error'); return; }
       if (!reasonInput.value.trim()) { UI.toast('一句话 reason 不能空', 'error'); return; }
       const composite = Rubric.composite(scores, rubric);
+      const overrideCount = Object.keys(overrides).length;
       try {
         State.addPrediction({
           scriptId: script.id,
@@ -243,6 +251,7 @@
           actualScriptLength: script.content.length,
           confidence,
           scores: { ...scores },
+          autoScores: { ...autoScores },
           composite,
           bucket: headline.range,
           probDistribution: dist.map(b => ({ ...b })),
@@ -252,7 +261,9 @@
           counterfactuals: {
             hit: cfHit.value, headline: cfHeadline.value, miss: cfMiss.value, flop: cfFlop.value
           },
-          assumptions: assumptions.value
+          assumptions: assumptions.value,
+          scoredBy: overrideCount > 0 ? 'claude+user_override' : 'claude',
+          userOverride: overrideCount > 0 ? overrides : null
         });
         UI.toast('🔒 预测已锁定', 'success');
         App.navigate('predict', { view: script.id });
@@ -319,23 +330,35 @@
     );
   }
 
-  function dimRow(d, scores, onChange) {
+  function dimRow(d, scores, autoScores, overrides, onChange) {
     const btnEls = [];
+    const out = el('div', { class: 'dim-score-out' }, String(scores[d.key]));
+    const tag = el('span', { class: 'badge', style: { fontSize: '9.5px', marginLeft: '4px' } }, '🤖');
     for (let i = 0; i <= 5; i++) {
       btnEls.push(el('button', { class: 'score-btn', onClick: () => {
         scores[d.key] = i;
         btnEls.forEach((x, j) => x.classList.toggle('active', j === i));
         out.textContent = i;
+        if (i !== autoScores[d.key]) {
+          overrides[d.key] = { from: autoScores[d.key], to: i };
+          tag.textContent = '✏️ overridden';
+          tag.className = 'badge accent';
+          tag.style.fontSize = '9.5px';
+          tag.style.marginLeft = '4px';
+        } else {
+          delete overrides[d.key];
+          tag.textContent = '🤖';
+          tag.className = 'badge';
+        }
         onChange();
       } }, String(i)));
     }
-    const out = el('div', { class: 'dim-score-out' }, String(scores[d.key]));
     return el('div', {
       class: 'dim-row',
       title: d.hint + '\n\n锚点:\n• ' + d.anchors.join('\n• ')
     },
       el('div', {},
-        el('div', { class: 'dim-key' }, d.key),
+        el('div', {}, el('span', { class: 'dim-key' }, d.key), tag),
         el('div', { class: 'dim-weight' }, '×' + d.weight)
       ),
       el('div', {},
@@ -415,11 +438,19 @@
 
     const banner = el('div', { class: 'immutable-banner' }, '🔒 此预测段是 immutable —— hook 已拦截所有编辑。仅可向"复盘"段追加。');
 
-    // Scores readback
+    // Scores readback — show overridden dims with the original
     const scoreList = el('div', { class: 'row wrap', style: { gap: '6px' } },
-      ...Object.entries(p.scores).map(([k, v]) =>
-        el('span', { class: 'badge outline' }, `${k}=${v}`))
+      ...Object.entries(p.scores).map(([k, v]) => {
+        const ov = p.userOverride && p.userOverride[k];
+        return el('span', { class: 'badge ' + (ov ? 'accent' : 'outline'),
+          title: ov ? `auto=${ov.from} → user=${ov.to}` : 'auto' },
+          `${k}=${v}` + (ov ? ` (was ${ov.from})` : ''));
+      })
     );
+    const scoredByBadge = el('div', { class: 'mt', style: { fontSize: '12px' } },
+      el('span', { class: 'muted' }, 'Scored by: '),
+      el('span', { class: 'badge ' + (p.scoredBy === 'claude+user_override' ? 'accent' : '') },
+        p.scoredBy || 'claude'));
 
     // Distribution chart
     const distChart = el('div', { class: 'bucket-dist' },
@@ -481,6 +512,7 @@
         el('div', { class: 'card' },
           el('div', { class: 'card-title' }, '① 7 维评分 → composite'),
           scoreList,
+          scoredByBadge,
           el('div', { class: 'composite-box' },
             el('div', {},
               el('div', { class: 'composite-label' }, 'rubric ' + p.rubricVersion),
