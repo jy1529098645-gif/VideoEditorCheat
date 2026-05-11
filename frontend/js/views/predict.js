@@ -111,9 +111,10 @@
     const confidence = Rubric.confidenceFromSamples(cal);
 
     // ============ AUTO-SCORE the script content — fully locked ============
+    const platform = Platforms.get(s.platform);
     const scores = Scorer.scoreText(script.content);
     const composite = Rubric.composite(scores, rubric);
-    const dist = Scorer.distFromComposite(composite, cal);
+    const dist = Scorer.distFromComposite(composite, cal, platform.id);
     const autoReasonText = Scorer.autoReason(scores, composite);
     const reasoningFactors = Scorer.autoFactors(scores);
     const headlineBucket = dist.find(b => b.headline);
@@ -130,8 +131,8 @@
     );
 
     const meta = el('div', { class: 'grid grid-4' },
+      metaTile('平台', platform.icon + ' ' + platform.name + (platform.optimal ? ' ✅' : '')),
       metaTile('稿子', script.title),
-      metaTile('ID', script.id),
       metaTile('字数', script.content.length + ' 字'),
       metaTile('信心', confidence.label,
         confidence.level === 'extreme-low' ? 'bad' :

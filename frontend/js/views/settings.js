@@ -15,6 +15,50 @@
       )
     );
 
+    // Platform selector
+    const platformCard = el('div', { class: 'card' },
+      el('div', { class: 'card-title' }, '📡 平台适配',
+        el('span', { class: 'badge accent', style: { marginLeft: '6px' } },
+          Platforms.get(s.platform).icon + ' ' + Platforms.get(s.platform).name)),
+      el('div', { class: 'muted', style: { fontSize: '12.5px', marginBottom: '14px' } },
+        '方法论通用 · bucket / 指标 / 算法权重侧重点会随平台切换。'),
+      el('div', { class: 'grid grid-2', style: { gap: '10px' } },
+        ...Platforms.list().map(p => el('div', {
+          class: 'list-item',
+          style: {
+            marginBottom: '0',
+            cursor: 'pointer',
+            borderColor: s.platform === p.id ? 'var(--accent)' : '',
+            background: s.platform === p.id ? 'var(--accent-soft)' : ''
+          },
+          onClick: () => {
+            State.set({ platform: p.id });
+            UI.toast(`已切换到 ${p.name}`, 'success');
+            render();
+          }
+        },
+          el('div', { class: 'row between', style: { alignItems: 'flex-start' } },
+            el('div', { class: 'flex-1' },
+              el('div', { class: 'row gap-sm', style: { alignItems: 'center' } },
+                el('span', { style: { fontSize: '17px' } }, p.icon),
+                el('span', { class: 'li-title' }, p.name),
+                p.optimal && el('span', { class: 'badge green', style: { fontSize: '10px' } }, '✅ 最佳适配')
+              ),
+              el('div', { class: 'li-meta', style: { marginTop: '4px', fontFamily: 'inherit' } }, p.desc),
+              el('div', { style: { fontSize: '11.5px', color: 'var(--text-faint)', marginTop: '4px' } },
+                '主指标：' + p.primaryMetric + ' · bucket：' + p.buckets.map(b => b.range).join(' / '))
+            ),
+            s.platform === p.id
+              ? el('span', { class: 'badge accent' }, '✓ 当前')
+              : el('span', { class: 'muted', style: { fontSize: '11px' } }, '点击切换')
+          )
+        ))
+      ),
+      el('div', { class: 'callout warn', style: { marginTop: '14px' } },
+        el('div', { class: 'callout-title' }, '⚠ rubric 校准来源'),
+        '内置 rubric 是抖音/快手观点视频 v2（25+ 样本校准）。其他平台 bucket 已对齐，但 rubric 权重还是视频版的——B 站 / YouTube / 公众号请按 tips 自己 bump rubric。')
+    );
+
     // Init wizard
     const initCard = s.initialised
       ? el('div', { class: 'card' },
@@ -63,7 +107,8 @@
         `当前：${s.scripts.length} 稿子 · ${s.predictions.length} 预测 · ${State.calibrationSamples()} 已复盘`)
     );
 
-    root.append(header, initCard,
+    root.append(header, platformCard,
+      el('div', { style: { height: '16px' } }), initCard,
       el('div', { style: { height: '16px' } }), tunables,
       el('div', { style: { height: '16px' } }), data);
   }

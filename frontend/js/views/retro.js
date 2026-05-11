@@ -105,14 +105,18 @@
   function renderForm(p) {
     const root = document.getElementById('view-retro');
     UI.clear(root);
+    const platform = Platforms.get(State.get().platform);
 
-    const playsInp = el('input', { class: 'input', type: 'number', placeholder: '例如：710000（绝对值，非"w"）',
+    const playsInp = el('input', { class: 'input', type: 'number',
+      placeholder: '绝对值',
       onInput: () => recomputeAutoBullets() });
-    const likesInp = el('input', { class: 'input', type: 'number', placeholder: '例如：24000' });
-    const commentsInp = el('input', { class: 'input', type: 'number', placeholder: '例如：899' });
-    const savesInp = el('input', { class: 'input', type: 'number', placeholder: '例如：5251' });
-    const sharesInp = el('input', { class: 'input', type: 'number', placeholder: '例如：18000',
+    const likesInp = el('input', { class: 'input', type: 'number', placeholder: '绝对值' });
+    const commentsInp = el('input', { class: 'input', type: 'number', placeholder: '绝对值' });
+    const savesInp = el('input', { class: 'input', type: 'number', placeholder: '绝对值' });
+    const sharesInp = el('input', { class: 'input', type: 'number', placeholder: '绝对值',
       onInput: () => recomputeAutoBullets() });
+    // Platform-aware first metric label (primary)
+    const primaryMetric = platform.retroMetrics[0];
     const sourceSel = el('select', { class: 'select' },
       el('option', { value: 'manual' }, '手动粘贴'),
       el('option', { value: 'adapter:douyin' }, 'adapter:douyin'),
@@ -198,15 +202,17 @@
         '每条验证 / 推翻必须引用具体数据（"分播比 2.53%"），不许写"基本符合"这种含糊措辞。'
       ),
       el('div', { class: 'card' },
-        el('div', { class: 'card-title' }, '① 实绩数据'),
+        el('div', { class: 'card-title' }, '① 实绩数据 · ' + platform.icon + ' ' + platform.name,
+          el('span', { class: 'badge', style: { marginLeft: '6px' } }, '主指标：' + primaryMetric.label)),
         el('div', { class: 'grid grid-3' },
-          field('播放（绝对值）', playsInp, '*必填'),
-          field('点赞', likesInp),
-          field('评论', commentsInp),
-          field('收藏', savesInp),
-          field('分享', sharesInp),
+          field(primaryMetric.label + '（绝对值）', playsInp, '*必填'),
+          field(platform.retroMetrics[1] ? platform.retroMetrics[1].label : '点赞', likesInp),
+          field(platform.retroMetrics[2] ? platform.retroMetrics[2].label : '评论', commentsInp),
+          field(platform.retroMetrics[3] ? platform.retroMetrics[3].label : '收藏', savesInp),
+          field(platform.retroMetrics[4] ? platform.retroMetrics[4].label : '分享', sharesInp),
           field('数据来源', sourceSel)
-        )
+        ),
+        platform.tips && el('div', { class: 'hint', style: { marginTop: '10px' } }, '💡 ' + platform.tips)
       ),
       el('div', { class: 'card', style: { marginTop: '16px' } },
         el('div', { class: 'card-title' }, '② Top 评论 / 模因关键词'),

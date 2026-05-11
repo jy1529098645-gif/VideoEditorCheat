@@ -82,46 +82,47 @@
     return { ER, SR, HP, QL, NA, AB, SAT };
   }
 
-  // Bucket prediction from composite. Returns the BUCKET RANGE the user is "betting".
-  function bucketFromComposite(comp) {
-    if (comp >= 8.0) return '30-100w';
-    if (comp >= 6.5) return '5-30w';
-    if (comp >= 4.5) return '5-30w';
-    return '<5w';
+  // Bucket prediction from composite. Maps composite to one of the 5 buckets
+  // for the active platform (top = highest, bottom = lowest performance tier).
+  function bucketFromComposite(comp, platformId) {
+    const p = window.Platforms.get(platformId || 'douyin');
+    const buckets = p.buckets;
+    // composite 0-10 → bucket index 0..4 (worst..best)
+    let idx;
+    if (comp >= 8.0) idx = 2;       // 中高
+    else if (comp >= 6.5) idx = 2;  // 中高 (same tier)
+    else if (comp >= 4.5) idx = 1;  // 中
+    else idx = 0;                   // 低
+    return buckets[idx].range;
   }
 
   // Probability distribution shaped by composite + sample count.
   // Cold-start (few samples) → flatter; mature → sharper around headline.
-  function distFromComposite(comp, samples) {
-    const headline = bucketFromComposite(comp);
-    // Sharpness: 0.0 (flat) → 1.0 (very sharp)
+  function distFromComposite(comp, samples, platformId) {
+    const p = window.Platforms.get(platformId || 'douyin');
+    const buckets = p.buckets;
+    const headline = bucketFromComposite(comp, platformId);
     const sharp = Math.min(1, samples / 15);
-    const peakPct = Math.round(30 + sharp * 30); // 30–60
+    const peakPct = Math.round(30 + sharp * 30);
     const wingHi = Math.round((100 - peakPct) * 0.4);
     const wingLo = Math.round((100 - peakPct) * 0.4);
     const tails = (100 - peakPct - wingHi - wingLo) / 2;
 
-    // Define the 5 buckets in order
-    const buckets = ['<5w', '5-30w', '30-100w', '>100w', '>150w'];
-    const centerCenter = { '<5w': 3, '5-30w': 15, '30-100w': 50, '>100w': 120, '>150w': 200 }[headline] || 50;
-    const idx = buckets.indexOf(headline);
-    const dist = buckets.map((range, i) => {
+    const idx = buckets.findIndex(b => b.range === headline);
+    const dist = buckets.map((b, i) => {
       let percent;
       if (i === idx) percent = peakPct;
       else if (Math.abs(i - idx) === 1) percent = (i < idx ? wingLo : wingHi);
       else percent = Math.max(1, Math.round(tails));
       return {
-        range,
+        range: b.range,
         percent,
         headline: i === idx,
-        center: i === idx ? centerCenter : 0
+        center: i === idx ? b.center : 0
       };
     });
-
-    // Normalise to exactly 100
     const sum = dist.reduce((s, b) => s + b.percent, 0);
     if (sum !== 100) dist[idx].percent += (100 - sum);
-
     return dist;
   }
 

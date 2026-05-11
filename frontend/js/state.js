@@ -5,6 +5,7 @@
     initialised: false,
     mode: 'cold-start', // 'cold-start' | 'calibration'
     contentForm: 'opinion-video',
+    platform: 'douyin', // 'douyin' (optimal) | 'kuaishou' | 'xiaohongshu' | 'bilibili' | 'youtube' | 'wechat' | 'twitter'
     activeRubric: 'opinion-video-v0',
     settings: {
       typicalDurationSeconds: 240,
