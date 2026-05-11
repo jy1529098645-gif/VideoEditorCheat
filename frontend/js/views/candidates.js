@@ -79,7 +79,27 @@
           )
         );
 
-    root.append(header, tabs, body);
+    // Next-action CTA: top candidate ready to promote
+    let cta = null;
+    const active = s.candidates.filter(c => c.tier !== 'skip' && c.tier !== 'done');
+    if (active.length === 0) {
+      cta = UI.nextCta({
+        label: '候选池空了',
+        title: '需要更多选题 — 抓热点 / 手动加 / 用 seed 生成',
+        btnText: '📡 抓热点',
+        onGo: () => App.navigate('trends')
+      });
+    } else {
+      const top = [...active].sort((a, b) => (b.composite || 0) - (a.composite || 0))[0];
+      cta = UI.nextCta({
+        label: '下一步',
+        title: `按 composite 最高：「${top.title}」 — 升为稿子开始拍`,
+        btnText: '→ 升为稿子',
+        onGo: () => promoteToScript(top)
+      });
+    }
+
+    root.append(header, tabs, body, cta);
   }
 
   function tierClass(t) {

@@ -32,7 +32,50 @@
       '推荐：buffer ≥ 2 时心态稳；buffer = 0 时节奏会断。'
     );
 
-    root.append(stats, el('div', { style: { height: '16px' } }), protocol);
+    // Big next-action CTA based on what's actionable right now
+    let cta = null;
+    const readyToRetro = published.find(p => daysSince(p.publishedAt) >= s.settings.retroWindowDays);
+    if (readyToRetro) {
+      cta = UI.nextCta({
+        label: '下一步',
+        title: `「${readyToRetro.title}」 已过 T+${daysSince(readyToRetro.publishedAt)}d — 数据可以抓了`,
+        btnText: '📈 写复盘',
+        onGo: () => App.navigate('retro', { id: readyToRetro.id })
+      });
+    } else if (shot.length > 0) {
+      cta = UI.nextCta({
+        label: '下一步',
+        title: `${shot.length} 条已拍未发 — 准备好就标记发布`,
+        btnText: '🚀 看待发列表',
+        onGo: () => {}, // already on pipeline view
+        muted: true
+      });
+    } else if (predicted.length > 0) {
+      cta = UI.nextCta({
+        label: '下一步',
+        title: `${predicted.length} 条已锁预测 · 等你去拍`,
+        btnText: '🎬 看待拍列表',
+        onGo: () => {},
+        muted: true
+      });
+    } else if (s.predictions.length === 0) {
+      cta = UI.nextCta({
+        label: '下一步',
+        title: 'pipeline 是空的 — 先去稿子里启动一次预测',
+        btnText: '📝 去稿子',
+        onGo: () => App.navigate('scripts')
+      });
+    } else {
+      cta = UI.nextCta({
+        label: '稳态',
+        title: 'pipeline 已闭环 — 看候选池里下一题',
+        btnText: '🔥 候选池',
+        muted: true,
+        onGo: () => App.navigate('candidates')
+      });
+    }
+
+    root.append(stats, cta, el('div', { style: { height: '16px' } }), protocol);
 
     root.append(
       el('div', { class: 'grid grid-3', style: { marginTop: '16px', gap: '16px' } },

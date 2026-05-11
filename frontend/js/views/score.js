@@ -1,4 +1,4 @@
-// Score view — auto-score a selected script + show diff if user overrides
+// Score view — read-only AI scoring of a selected script
 (function () {
   const { el } = UI;
 
@@ -14,9 +14,9 @@
 
     const header = el('div', { class: 'section-header' },
       el('div', {},
-        el('h2', {}, '🎯 自动打分'),
+        el('h2', {}, '🎯 AI 评分'),
         el('p', { class: 'muted', style: { fontSize: '12px' } },
-          '选稿子 → 系统基于文本启发式自动出 7 维分。改你不认同的——这里不写文件，去「预测」才落盘。')
+          '选稿子 → AI 基于文本自动出 7 维分。分数由稿子内容决定 — 不可手改。')
       ),
       scriptSelector(selectedId, val => render({ scriptId: val }))
     );
@@ -34,31 +34,25 @@
     }
 
     const autoScores = Scorer.scoreText(script.content);
-    const scores = { ...autoScores };
+    const composite = Rubric.composite(autoScores, rubric);
+    const reason = Scorer.autoReason(autoScores, composite);
 
-    const compositeEl = el('div', { class: 'composite-value' }, '0.00');
+    const dimRows = rubric.dimensions.map(d => dimRow(d, autoScores));
     const compositeBox = el('div', { class: 'composite-box' },
       el('div', {},
-        el('div', { class: 'composite-label' }, `${rubric.name} · 🤖 启发式自动评分`),
+        el('div', { class: 'composite-label' }, `${rubric.name} · 🤖 启发式自动`),
         el('div', { class: 'composite-formula' }, rubric.formula)
       ),
-      compositeEl
+      el('div', { class: 'composite-value' }, composite.toFixed(2))
     );
-
-    const reasonOut = el('div', { class: 'muted', style: { fontSize: '13px', fontStyle: 'italic', marginTop: '10px' } });
-
-    function recompute() {
-      const v = Rubric.composite(scores, rubric);
-      compositeEl.textContent = v.toFixed(2);
-      reasonOut.textContent = '"' + Scorer.autoReason(scores, v) + '"';
-    }
-
-    const dimRows = rubric.dimensions.map(d => dimRow(d, scores, autoScores, recompute));
-    recompute();
+    const reasonOut = el('div', { class: 'muted', style: { fontSize: '13px', fontStyle: 'italic', marginTop: '10px' } },
+      '"' + reason + '"');
 
     const previewBox = el('div', { class: 'card' },
       el('div', { class: 'card-title' }, '📄 稿子预览',
-        el('span', { class: 'badge', style: { marginLeft: '6px' } }, `${script.content.length} 字`)
+        el('span', { class: 'badge', style: { marginLeft: '6px' } }, `${script.content.length} 字`),
+        el('button', { class: 'btn btn-sm', style: { marginLeft: 'auto' },
+          onClick: () => App.navigate('scripts') }, '✎ 改稿子')
       ),
       el('div', { class: 'mono', style: { whiteSpace: 'pre-wrap', fontSize: '12.5px',
         maxHeight: '420px', overflowY: 'auto', color: 'var(--text-dim)',
@@ -67,8 +61,8 @@
     );
 
     const scoreCard = el('div', { class: 'card' },
-      el('div', { class: 'card-title' }, '🤖 7 维自动评分',
-        el('span', { class: 'badge', style: { marginLeft: '6px' } }, '默认 AI 值；不认同就点「✎ 覆写」')),
+      el('div', { class: 'card-title' }, '🤖 7 维评分',
+        el('span', { class: 'badge', style: { marginLeft: '6px' } }, 'AI 自动 · 只读')),
       ...dimRows,
       compositeBox,
       reasonOut
@@ -105,17 +99,11 @@
     );
   }
 
-  function dimRow(d, scores, autoScores, onChange) {
-    const rowNode = el('div', {
+  function dimRow(d, scores) {
+    return el('div', {
       class: 'dim-row',
       title: d.hint + '\n\n锚点:\n• ' + d.anchors.join('\n• ')
-    });
-    const cell = UI.aiScoreCell(autoScores[d.key], (newVal) => {
-      scores[d.key] = newVal;
-      rowNode.classList.toggle('overridden', newVal !== autoScores[d.key]);
-      onChange();
-    });
-    rowNode.append(
+    },
       el('div', {},
         el('div', { class: 'dim-key' }, d.key),
         el('div', { class: 'dim-weight' }, '×' + d.weight)
@@ -124,11 +112,10 @@
         el('div', { class: 'dim-name' }, d.name + ' · ' + d.name_cn),
         el('div', { class: 'dim-name-cn' }, d.hint)
       ),
-      cell.node
+      UI.aiScoreReadonly(scores[d.key])
     );
-    return rowNode;
   }
 
   window.Views = window.Views || {};
-  window.Views.score = { render, title: '打分', sub: '🤖 自动评分 · 人复核' };
+  window.Views.score = { render, title: '打分', sub: '🤖 AI 自动评分 · 只读' };
 })();

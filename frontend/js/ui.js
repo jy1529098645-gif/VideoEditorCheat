@@ -97,9 +97,18 @@
     return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
   }
 
-  // ============ AI score cell — display-first, override on demand ============
-  // Returns { node, getValue, isOverridden } so callers can read state.
-  // onChange(newVal, isOverride) fires whenever the value changes.
+  // ============ AI score cell — READ-ONLY ============
+  // Score is AI-determined; user cannot override (preserves calibration signal).
+  function aiScoreReadonly(value) {
+    return el('div', { class: 'ai-score-cell' },
+      el('span', { class: 'ai-score-value', title: 'AI 评分 · 不可改 · 改稿子内容才能影响这个值' },
+        el('span', { class: 'ai-tag' }, '🤖'),
+        el('span', {}, String(value))
+      )
+    );
+  }
+
+  // (kept for bump-view weight editing — never used in score/predict flow)
   function aiScoreCell(autoVal, onChange) {
     let val = autoVal;
     let picking = false;
@@ -156,5 +165,5 @@
     );
   }
 
-  window.UI = { el, clear, toast, modal, confirm, fmt, fmtPlays, fmtPct, fmtDate, fmtDateTime, daysSince, aiScoreCell, nextCta };
+  window.UI = { el, clear, toast, modal, confirm, fmt, fmtPlays, fmtPct, fmtDate, fmtDateTime, daysSince, aiScoreCell, aiScoreReadonly, nextCta };
 })();

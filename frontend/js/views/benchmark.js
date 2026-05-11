@@ -32,7 +32,16 @@
       );
     }
 
-    root.append(header, body);
+    const cta = s.benchmarks.length === 0
+      ? null
+      : UI.nextCta({
+          label: '下一步',
+          title: '对标账号有了 — 该写自己的第一份稿子了',
+          btnText: '📝 写稿子',
+          onGo: () => App.navigate('scripts')
+        });
+
+    root.append(header, body, cta);
   }
 
   function renderCard(b) {
