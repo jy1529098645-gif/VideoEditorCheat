@@ -510,6 +510,14 @@ body {
   font-weight: 700;
   color: var(--accent);
   letter-spacing: -1px;
+  white-space: nowrap;
+}
+.composite-value::after {
+  content: " / 10";
+  font-size: 14px;
+  opacity: 0.5;
+  font-weight: 400;
+  margin-left: 2px;
 }
 
 /* ============ Probability Distribution ============ */

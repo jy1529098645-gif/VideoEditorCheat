@@ -101,9 +101,10 @@
   // Score is AI-determined; user cannot override (preserves calibration signal).
   function aiScoreReadonly(value) {
     return el('div', { class: 'ai-score-cell' },
-      el('span', { class: 'ai-score-value', title: 'AI 评分 · 不可改 · 改稿子内容才能影响这个值' },
+      el('span', { class: 'ai-score-value', title: 'AI 评分 · 0-5 整数 · 不可改 · 改稿子内容才能影响这个值' },
         el('span', { class: 'ai-tag' }, '🤖'),
-        el('span', {}, String(value))
+        el('span', {}, String(value)),
+        el('span', { class: 'ai-tag', style: { fontSize: '11px', opacity: '0.55' } }, '/ 5')
       )
     );
   }

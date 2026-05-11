@@ -72,7 +72,7 @@
     return el('table', { class: 'table' },
       el('thead', {}, el('tr', {},
         el('th', {}, '标题'),
-        el('th', {}, 'composite'),
+        el('th', {}, 'composite (满 10)'),
         el('th', {}, '押'),
         el('th', {}, '实绩'),
         el('th', {}, '中枢偏差'),
@@ -87,7 +87,7 @@
             style: { cursor: 'pointer' }
           },
             el('td', {}, p.title),
-            el('td', { class: 'mono' }, p.composite),
+            el('td', { class: 'mono' }, p.composite + ' / 10'),
             el('td', { class: 'mono' }, p.bucket),
             el('td', { class: 'mono' }, fmtPlays(r.actualPlays)),
             el('td', {}, el('span', { class: 'badge ' +

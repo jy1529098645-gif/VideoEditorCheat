@@ -497,7 +497,7 @@
     // Scores readback — read-only AI badges
     const scoreList = el('div', { class: 'row wrap', style: { gap: '6px' } },
       ...Object.entries(p.scores).map(([k, v]) =>
-        el('span', { class: 'badge outline' }, `🤖 ${k}=${v}`))
+        el('span', { class: 'badge outline' }, `🤖 ${k}=${v}/5`))
     );
     const scoredByBadge = el('div', { class: 'mt', style: { fontSize: '12px' } },
       el('span', { class: 'muted' }, 'Scored by: '),
