@@ -132,27 +132,48 @@
     const verifiedBox = el('div', { class: 'stack', style: { gap: '6px' } });
     const refutedBox = el('div', { class: 'stack', style: { gap: '6px' } });
     const newObsBox = el('div', { class: 'stack', style: { gap: '6px' } });
+    const useClaude = window.Claude && window.Claude.isEnabled();
     const autoBanner = el('div', { class: 'callout', style: { fontSize: '12px', padding: '8px 12px' } },
-      '🤖 等你填播放 + 分享数 → 自动对照预测因素 → 出验证/推翻 bullet');
+      useClaude
+        ? `🤖 填完播放 + 分享数 → Claude 自动对照预测 → 出验证/推翻 bullet（约 5-10 秒）`
+        : '🔧 填完播放 + 分享数 → 本地启发式自动对照（未配 Claude key）');
+    let bulletReqId = 0;
 
-    function recomputeAutoBullets() {
+    async function recomputeAutoBullets() {
       if (!playsInp.value) return;
-      const auto = Scorer.autoRetroCompare(p, {
+      const myReqId = ++bulletReqId;
+      if (useClaude) {
+        autoBanner.className = 'callout';
+        autoBanner.textContent = '🤖 Claude 对照中…';
+      }
+      const days = UI.daysSince(p.publishedAt);
+      const auto = await Scorer.autoRetro(p, {
         actualPlays: playsInp.value,
         actualLikes: likesInp.value,
         actualComments: commentsInp.value,
-        actualShares: sharesInp.value
-      });
-      // Replace contents with auto-suggestions (idempotent on each recompute)
+        actualSaves: savesInp.value,
+        actualShares: sharesInp.value,
+        commentKeywords: commentsBox.value
+      }, days);
+      if (myReqId !== bulletReqId) return; // stale response
+
       verifiedItems.length = 0; refutedItems.length = 0;
       auto.verified.forEach(v => verifiedItems.push(v));
       auto.refuted.forEach(v => refutedItems.push(v));
       if (verifiedItems.length === 0) verifiedItems.push('');
       if (refutedItems.length === 0) refutedItems.push('');
+      // also pre-fill new observations from Claude (if any)
+      if (auto.newObservations && auto.newObservations.length > 0) {
+        newObsItems.length = 0;
+        auto.newObservations.forEach(v => newObsItems.push(v));
+        renderArr(newObsItems, newObsBox, '🧠 新的规律，必须可追溯到数据');
+      }
       renderArr(verifiedItems, verifiedBox, '✅ 引用具体数据点');
       renderArr(refutedItems, refutedBox, '❌ "高置信度被推翻 → rubric bug"');
+      const sourceLabel = auto.source === 'claude' ? '🤖 Claude' :
+        auto.source === 'heuristic-fallback' ? '⚠ Claude 失败，启发式' : '🔧 启发式';
       autoBanner.className = 'callout good';
-      autoBanner.textContent = `🤖 已根据实际数据自动生成 ${auto.verified.length} 条验证 + ${auto.refuted.length} 条推翻。改你不认同的。`;
+      autoBanner.textContent = `${sourceLabel} 自动生成 ${auto.verified.length} 条验证 + ${auto.refuted.length} 条推翻。改你不认同的。`;
     }
     function renderArr(arr, box, ph) {
       UI.clear(box);

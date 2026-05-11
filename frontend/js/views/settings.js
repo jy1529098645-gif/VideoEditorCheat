@@ -59,6 +59,81 @@
         '内置 rubric 是抖音/快手观点视频 v2（25+ 样本校准）。其他平台 bucket 已对齐，但 rubric 权重还是视频版的——B 站 / YouTube / 公众号请按 tips 自己 bump rubric。')
     );
 
+    // ============ Claude API key ============
+    const claudeCard = (() => {
+      const currentKey = window.Claude.getKey();
+      const masked = currentKey ? currentKey.slice(0, 7) + '…' + currentKey.slice(-4) : '';
+      const keyInput = el('input', {
+        class: 'input', type: 'password', placeholder: 'sk-ant-api03-...',
+        value: currentKey,
+        onChange: e => window.Claude.setKey(e.target.value.trim())
+      });
+      const modelSel = el('select', { class: 'select',
+        onChange: e => window.Claude.setModel(e.target.value)
+      },
+        ...window.Claude.MODELS.map(m => el('option', {
+          value: m.id, selected: m.id === window.Claude.getModel() ? 'true' : null
+        }, m.name + ' — ' + m.desc))
+      );
+      const status = el('div', { style: { marginTop: '10px', fontSize: '12.5px' } });
+      function setStatus(msg, kind) {
+        UI.clear(status);
+        status.appendChild(el('span', { class: 'badge ' + (kind || '') }, msg));
+      }
+      if (currentKey) setStatus(`✓ 已配置 (${masked})`, 'green');
+      else setStatus('❌ 未配置 — 当前用本地启发式打分（精度低）', 'yellow');
+
+      const testBtn = el('button', { class: 'btn', onClick: async () => {
+        if (!window.Claude.getKey()) { UI.toast('先填 key', 'error'); return; }
+        setStatus('🔄 测试中…');
+        try {
+          const r = await window.Claude.ping();
+          setStatus(`✓ 连接成功 · model: ${r.model || window.Claude.getModel()}`, 'green');
+          UI.toast('Claude API 可用 ✓', 'success');
+        } catch (e) {
+          setStatus('✗ ' + e.message, 'red');
+          UI.toast('测试失败：' + e.message, 'error');
+        }
+      } }, '🔌 测试连接');
+
+      const clearBtn = el('button', { class: 'btn btn-ghost', onClick: () => {
+        window.Claude.setKey('');
+        UI.toast('已清除 key', 'success');
+        render();
+      } }, '清除 key');
+
+      return el('div', { class: 'card', style: { borderColor: currentKey ? 'var(--green)' : 'var(--accent)' } },
+        el('div', { class: 'card-title' }, '🤖 Claude API',
+          el('span', { class: 'badge ' + (currentKey ? 'green' : 'accent'),
+            style: { marginLeft: '6px' } },
+            currentKey ? '已启用' : '推荐配置')),
+        el('div', { class: 'muted', style: { fontSize: '12.5px', marginBottom: '14px' } },
+          '配置后，7 维评分 + 复盘验证/推翻 bullet 都改用 Claude 真正基于 rubric + 25+ 锚点样本判分（不再用关键词匹配）。' +
+          ' Key 只存在你这台设备的浏览器 localStorage 里，永远不上服务器。'),
+        el('div', { class: 'grid grid-2' },
+          el('div', { class: 'form-group' },
+            el('label', { class: 'label' }, 'API Key'),
+            keyInput,
+            el('div', { class: 'hint' }, '从 console.anthropic.com 申请 · 格式 sk-ant-api03-...')
+          ),
+          el('div', { class: 'form-group' },
+            el('label', { class: 'label' }, 'Model'),
+            modelSel,
+            el('div', { class: 'hint' }, '推荐 Sonnet 4.6 — 性价比最高')
+          )
+        ),
+        el('div', { class: 'row gap-sm' }, testBtn, currentKey && clearBtn),
+        status,
+        el('div', { class: 'callout', style: { marginTop: '14px', padding: '10px 14px' } },
+          el('div', { style: { fontSize: '12.5px' } },
+            el('strong', {}, '成本估算：'),
+            ' 一次预测打分 ≈ $0.008（缓存 rubric 后）/ 一次复盘 bullet ≈ $0.014。每月 30 条作品 ≈ $0.66。'),
+          el('div', { style: { fontSize: '12.5px', marginTop: '4px' } },
+            el('strong', {}, '安全：'),
+            ' 浏览器直连 anthropic.com，使用 anthropic-dangerous-direct-browser-access header。Key 只你看得到。'))
+      );
+    })();
+
     // Init wizard
     const initCard = s.initialised
       ? el('div', { class: 'card' },
@@ -107,7 +182,8 @@
         `当前：${s.scripts.length} 稿子 · ${s.predictions.length} 预测 · ${State.calibrationSamples()} 已复盘`)
     );
 
-    root.append(header, platformCard,
+    root.append(header, claudeCard,
+      el('div', { style: { height: '16px' } }), platformCard,
       el('div', { style: { height: '16px' } }), initCard,
       el('div', { style: { height: '16px' } }), tunables,
       el('div', { style: { height: '16px' } }), data);

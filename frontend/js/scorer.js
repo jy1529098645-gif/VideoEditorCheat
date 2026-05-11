@@ -215,8 +215,63 @@
     return { verified, refuted };
   }
 
+  // ============ Async wrapper: Claude if key set, otherwise regex ============
+  async function autoScore(text) {
+    if (window.Claude && window.Claude.isEnabled()) {
+      try {
+        const res = await window.Claude.scoreScript(text);
+        return {
+          scores: res.scores,
+          reason: res.reason || '',
+          factors: res.factors || [],
+          closestAnchor: res.closest_anchor || '',
+          source: 'claude',
+          model: window.Claude.getModel(),
+          usage: res._usage
+        };
+      } catch (e) {
+        console.warn('Claude scoring failed, falling back to heuristic:', e.message);
+        return { ...regexFallback(text), source: 'heuristic-fallback', error: e.message };
+      }
+    }
+    return { ...regexFallback(text), source: 'heuristic' };
+  }
+
+  function regexFallback(text) {
+    const scores = scoreText(text);
+    return {
+      scores,
+      reason: autoReason(scores, 0), // composite added by caller
+      factors: autoFactors(scores),
+      closestAnchor: null
+    };
+  }
+
+  // Retro: Claude if available, otherwise local heuristic comparison.
+  async function autoRetro(prediction, actuals, daysSincePublish) {
+    if (window.Claude && window.Claude.isEnabled()) {
+      try {
+        const res = await window.Claude.retroBullets(prediction,
+          { ...actuals, daysSincePublish });
+        return {
+          verified: res.verified || [],
+          refuted: res.refuted || [],
+          newObservations: res.new_observations || [],
+          deviation: res.deviation || 'on-target',
+          summary: res.summary || '',
+          source: 'claude'
+        };
+      } catch (e) {
+        console.warn('Claude retro failed, falling back to heuristic:', e.message);
+        return { ...autoRetroCompare(prediction, actuals), source: 'heuristic-fallback', error: e.message };
+      }
+    }
+    return { ...autoRetroCompare(prediction, actuals), source: 'heuristic' };
+  }
+
   window.Scorer = {
     scoreText, bucketFromComposite, distFromComposite,
-    autoReason, autoFactors, autoRetroCompare
+    autoReason, autoFactors, autoRetroCompare,
+    autoScore, autoRetro
   };
 })();

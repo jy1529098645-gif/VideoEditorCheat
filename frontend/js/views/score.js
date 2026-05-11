@@ -2,11 +2,12 @@
 (function () {
   const { el } = UI;
 
-  function render(params = {}) {
+  async function render(params = {}) {
     const root = document.getElementById('view-score');
     UI.clear(root);
     const s = State.get();
     const rubric = Rubric.getRubric(s.activeRubric);
+    const useClaude = window.Claude && window.Claude.isEnabled();
 
     const scripts = s.scripts;
     const selectedId = params.scriptId || (scripts[0] && scripts[0].id);
@@ -16,7 +17,7 @@
       el('div', {},
         el('h2', {}, '🎯 AI 评分'),
         el('p', { class: 'muted', style: { fontSize: '12px' } },
-          '选稿子 → AI 基于文本自动出 7 维分。分数由稿子内容决定 — 不可手改。')
+          (useClaude ? `🤖 Claude (${window.Claude.getModel()})` : '🔧 本地启发式 · 没配 key') + ' · 不可手改')
       ),
       scriptSelector(selectedId, val => render({ scriptId: val }))
     );
@@ -33,9 +34,19 @@
       return;
     }
 
-    const autoScores = Scorer.scoreText(script.content);
+    if (useClaude) {
+      root.append(header, el('div', { class: 'card' },
+        el('div', { class: 'card-title' }, '🤖 Claude 评分中…'),
+        el('div', { class: 'muted', style: { fontSize: '13px' } }, '基于 rubric + 25+ 样本评分，约 5-10 秒')
+      ));
+    }
+    const result = await Scorer.autoScore(script.content);
+    UI.clear(root);
+    const autoScores = result.scores;
     const composite = Rubric.composite(autoScores, rubric);
-    const reason = Scorer.autoReason(autoScores, composite);
+    const reason = result.reason || Scorer.autoReason(autoScores, composite);
+    const closestAnchor = result.closestAnchor;
+    const scoringSource = result.source;
 
     const dimRows = rubric.dimensions.map(d => dimRow(d, autoScores));
     const compositeBox = el('div', { class: 'composite-box' },
@@ -60,12 +71,18 @@
       } }, script.content || '（空）')
     );
 
+    const sourceBadge = scoringSource === 'claude'
+      ? el('span', { class: 'badge accent', style: { marginLeft: '6px' } }, '🤖 Claude')
+      : scoringSource === 'heuristic-fallback'
+      ? el('span', { class: 'badge yellow', style: { marginLeft: '6px' } }, '⚠ Claude 失败，启发式')
+      : el('span', { class: 'badge', style: { marginLeft: '6px' } }, '🔧 启发式（未配 key）');
     const scoreCard = el('div', { class: 'card' },
-      el('div', { class: 'card-title' }, '🤖 7 维评分',
-        el('span', { class: 'badge', style: { marginLeft: '6px' } }, 'AI 自动 · 只读')),
+      el('div', { class: 'card-title' }, '7 维评分', sourceBadge),
       ...dimRows,
       compositeBox,
-      reasonOut
+      reasonOut,
+      closestAnchor && el('div', { class: 'callout', style: { marginTop: '10px', padding: '10px 14px' } },
+        el('strong', {}, '最近 anchor 样本：'), ' ' + closestAnchor)
     );
 
     const existing = State.getPrediction(script.id);

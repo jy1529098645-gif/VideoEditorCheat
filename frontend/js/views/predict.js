@@ -18,7 +18,10 @@
     if (existing) return renderView(existing);
 
     if (!script) return renderList();
-    renderForm(script);
+    renderForm(script).catch(e => {
+      console.error(e);
+      UI.toast('预测表单渲染失败：' + e.message, 'error');
+    });
   }
 
   // ============ List of existing predictions ============
@@ -102,32 +105,61 @@
   }
 
   // ============ Prediction form (multi-step single-page) ============
-  function renderForm(script) {
+  async function renderForm(script) {
     const root = document.getElementById('view-predict');
     UI.clear(root);
     const s = State.get();
     const rubric = Rubric.getRubric(s.activeRubric);
     const cal = State.calibrationSamples();
     const confidence = Rubric.confidenceFromSamples(cal);
-
-    // ============ AUTO-SCORE the script content — fully locked ============
     const platform = Platforms.get(s.platform);
-    const scores = Scorer.scoreText(script.content);
+    const useClaude = window.Claude && window.Claude.isEnabled();
+
+    // Loading state if calling Claude
+    if (useClaude) {
+      root.append(el('div', { class: 'card' },
+        el('div', { class: 'card-title' }, '🤖 ' + window.Claude.getModel() + ' 评分中…'),
+        el('div', { class: 'muted', style: { fontSize: '13px' } },
+          '正在让 Claude 基于 rubric + 25+ 样本评分 + 生成预测组件。一次大约 5-10 秒。')
+      ));
+    }
+
+    let scoringResult;
+    try {
+      scoringResult = await Scorer.autoScore(script.content);
+    } catch (e) {
+      UI.toast('评分失败：' + e.message, 'error');
+      return;
+    }
+    UI.clear(root);
+
+    const scores = scoringResult.scores;
     const composite = Rubric.composite(scores, rubric);
     const dist = Scorer.distFromComposite(composite, cal, platform.id);
-    const autoReasonText = Scorer.autoReason(scores, composite);
-    const reasoningFactors = Scorer.autoFactors(scores);
+    // Prefer Claude's reason; fall back to heuristic
+    const autoReasonText = scoringResult.reason || Scorer.autoReason(scores, composite);
+    const reasoningFactors = (scoringResult.factors && scoringResult.factors.length > 0)
+      ? scoringResult.factors
+      : Scorer.autoFactors(scores);
+    const closestAnchor = scoringResult.closestAnchor;
     const headlineBucket = dist.find(b => b.headline);
     const anchors = [];
+    const scoringSource = scoringResult.source;
 
     // ---- Header + banner ----
+    const scorerLabel = scoringSource === 'claude'
+      ? `🤖 Claude (${window.Claude.getModel()})`
+      : scoringSource === 'heuristic-fallback'
+      ? '⚠ Claude 调用失败，回退到本地启发式'
+      : '🔧 本地启发式（未配置 Claude API key）';
     const banner = el('div', { class: 'callout' },
-      el('div', { class: 'callout-title' }, '🤖 AI 已自动判分'),
-      el('div', {}, '7 维评分、composite、概率分布、bucket、一句话 reason、推理因素都由 AI 基于稿子文本算出 — 不让你改是为了保留你直觉 vs AI 的偏离信号。'),
+      el('div', { class: 'callout-title' }, '已自动评分 · ' + scorerLabel),
+      el('div', {}, '7 维评分、composite、概率分布、bucket、一句话 reason、推理因素都由 AI 算出 — 不让你改是为了保留你直觉 vs AI 的偏离信号。'),
+      closestAnchor && el('div', { style: { marginTop: '6px' } },
+        el('strong', {}, '最近 anchor 样本：'), closestAnchor),
       el('div', { style: { marginTop: '6px' } },
-        el('strong', {}, '你要做的：填底下的判断块（锚点 / 反事实 / 关键假设），那是 AI 没法替你想的。')),
-      el('div', { style: { marginTop: '6px' } },
-        '⚠ 提交后预测段永久 immutable。')
+        el('strong', {}, '你要做的：填底下的判断块（锚点 / 反事实 / 关键假设）。')),
+      el('div', { style: { marginTop: '6px' } }, '⚠ 提交后永久 immutable。')
     );
 
     const meta = el('div', { class: 'grid grid-4' },
