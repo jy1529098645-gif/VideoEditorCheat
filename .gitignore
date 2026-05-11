@@ -5,3 +5,5 @@ Thumbs.db
 node_modules/
 .vscode/
 .claude/settings.local.json
+.claude/scheduled_tasks*
+.claude/tasks/
