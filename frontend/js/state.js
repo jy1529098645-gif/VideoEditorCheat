@@ -194,8 +194,14 @@
   }
 
   function deleteScript(id) {
+    // Cascade: also remove the linked prediction (if any) and its retro.
+    // Returns what was actually deleted for the toast.
+    const hadPrediction = state.predictions.some(p => p.id === id);
+    const hadRetro = state.predictions.some(p => p.id === id && p.retro && p.retro.actualPlays != null);
     state.scripts = state.scripts.filter(s => s.id !== id);
+    state.predictions = state.predictions.filter(p => p.id !== id);
     save();
+    return { hadPrediction, hadRetro };
   }
 
   function getScript(id) { return state.scripts.find(s => s.id === id); }

@@ -64,15 +64,45 @@
         pred && el('button', { class: 'btn btn-sm btn-pulse',
           onClick: () => App.navigate('predict', { view: pred.id })
         }, '查看预测 →'),
-        !pred && el('button', { class: 'btn btn-sm',
-          onClick: () => UI.confirm({
-            title: '删除稿子？', danger: true, confirmText: '删除',
-            body: '一旦写过预测，原稿不可删（immutable 链）。当前可删。',
-            onConfirm: () => { State.deleteScript(script.id); UI.toast('已删除', 'success'); render(); }
-          })
+        el('button', {
+          class: 'btn btn-sm',
+          onClick: () => confirmDelete(script, pred)
         }, '删除')
       )
     );
+  }
+
+  function confirmDelete(script, pred) {
+    const { el } = UI;
+    const hasRetro = pred && pred.retro && pred.retro.actualPlays != null;
+    const body = pred
+      ? el('div', {},
+          el('div', { class: 'callout bad', style: { marginBottom: '10px' } },
+            el('div', { class: 'callout-title' }, '⚠ 会级联删除以下数据'),
+            el('ul', { style: { paddingLeft: '20px', fontSize: '13px', marginTop: '4px' } },
+              el('li', {}, '稿子 ', el('code', {}, script.title)),
+              el('li', {}, '关联的 immutable 预测段 (composite ' + pred.composite + ', 押 ' + pred.bucket + ')'),
+              hasRetro && el('li', {}, el('strong', {}, '校准样本 1 条'), ' — 实绩 ' + UI.fmtPlays(pred.retro.actualPlays) + '，删后该样本不再参与 rubric 升级验证')
+            )
+          ),
+          el('div', { style: { fontSize: '12.5px', color: 'var(--text-dim)' } },
+            '本工具对 immutable 严格 — 用于防止"事后偷看数据反推预测"。' +
+            '但删除一个完整 immutable 链是合法的"我承认这条不算"。' +
+            (hasRetro ? ' 如果你只是想忘掉它，建议保留——校准池越大，rubric 越准。' : ''))
+        )
+      : '稿子尚未锁定预测，删除安全。';
+    UI.confirm({
+      title: '删除稿子？',
+      danger: true, confirmText: '删除',
+      body,
+      onConfirm: () => {
+        const r = State.deleteScript(script.id);
+        let msg = '稿子已删';
+        if (r.hadPrediction) msg += '（同时清除预测' + (r.hadRetro ? ' + 校准样本' : '') + '）';
+        UI.toast(msg, 'success');
+        render();
+      }
+    });
   }
 
   function statusBadge(status, pred) {
