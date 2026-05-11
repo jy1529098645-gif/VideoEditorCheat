@@ -97,5 +97,64 @@
     return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
   }
 
-  window.UI = { el, clear, toast, modal, confirm, fmt, fmtPlays, fmtPct, fmtDate, fmtDateTime, daysSince };
+  // ============ AI score cell — display-first, override on demand ============
+  // Returns { node, getValue, isOverridden } so callers can read state.
+  // onChange(newVal, isOverride) fires whenever the value changes.
+  function aiScoreCell(autoVal, onChange) {
+    let val = autoVal;
+    let picking = false;
+    const valBox = el('span', { class: 'ai-score-value' });
+    const btn = el('button', { class: 'score-override-btn', title: '点击覆写 AI 评分' });
+    const pickerWrap = el('span', { class: 'score-picker-inline', style: { display: 'none' } });
+    const revert = el('button', { class: 'revert-btn', style: { display: 'none' }, title: '恢复 AI 默认' }, '↶');
+
+    const pickerBtns = [];
+    for (let i = 0; i <= 5; i++) {
+      pickerBtns.push(el('button', { class: 'score-btn', onClick: () => {
+        val = i;
+        rerender();
+        onChange && onChange(val, val !== autoVal);
+      } }, String(i)));
+    }
+    pickerWrap.append(...pickerBtns);
+
+    function rerender() {
+      const isOv = val !== autoVal;
+      valBox.classList.toggle('overridden', isOv);
+      clear(valBox);
+      valBox.appendChild(el('span', { class: 'ai-tag' }, isOv ? '✏️' : '🤖'));
+      valBox.appendChild(el('span', {}, String(val)));
+      if (isOv) valBox.appendChild(el('span', { class: 'ai-tag' }, `(was ${autoVal})`));
+      revert.style.display = isOv ? 'inline-block' : 'none';
+      pickerBtns.forEach((b, j) => b.classList.toggle('active', j === val));
+      btn.textContent = picking ? '✕ 关' : (isOv ? '改' : '✎ 覆写');
+      btn.classList.toggle('active', picking);
+      pickerWrap.style.display = picking ? 'inline-flex' : 'none';
+    }
+
+    btn.addEventListener('click', () => { picking = !picking; rerender(); });
+    revert.addEventListener('click', () => {
+      val = autoVal;
+      picking = false;
+      rerender();
+      onChange && onChange(val, false);
+    });
+
+    rerender();
+    const node = el('div', { class: 'ai-score-cell' }, valBox, revert, pickerWrap, btn);
+    return { node, getValue: () => val, isOverridden: () => val !== autoVal };
+  }
+
+  // ============ Next-step CTA banner ============
+  function nextCta({ label, title, btnText, onGo, muted }) {
+    return el('div', { class: 'next-cta' + (muted ? ' muted-cta' : '') },
+      el('div', { class: 'next-cta-text' },
+        el('div', { class: 'next-cta-label' }, label),
+        el('div', { class: 'next-cta-title' }, title)
+      ),
+      el('button', { class: 'next-cta-btn', onClick: onGo }, btnText)
+    );
+  }
+
+  window.UI = { el, clear, toast, modal, confirm, fmt, fmtPlays, fmtPct, fmtDate, fmtDateTime, daysSince, aiScoreCell, nextCta };
 })();

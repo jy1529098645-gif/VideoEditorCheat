@@ -151,15 +151,20 @@
     return el('div', { class: 'card' },
       el('div', { class: 'card-title' }, '🚦 下一步建议'),
       el('div', { class: 'stack', style: { gap: '8px' } },
-        ...steps.map(s => el('div', {
+        ...steps.map((s, i) => el('div', {
           class: 'list-item',
-          style: { padding: '10px 14px', marginBottom: '0' },
+          style: { padding: '10px 14px', marginBottom: '0',
+            border: i === 0 ? '1px solid var(--accent)' : '',
+            background: i === 0 ? 'var(--accent-soft)' : '' },
           onClick: () => App.navigate(s.view)
         },
           el('div', { class: 'row' },
             el('span', { style: { fontSize: '16px' } }, s.icon),
-            el('span', { class: 'flex-1' }, s.text),
-            el('span', { class: 'muted', style: { fontSize: '11px' } }, '→')
+            el('span', { class: 'flex-1', style: { fontWeight: i === 0 ? '500' : '400' } }, s.text),
+            el('span', {
+              class: 'btn btn-sm' + (i === 0 ? ' btn-pulse' : ''),
+              style: { pointerEvents: 'none' }
+            }, '前往 →')
           )
         ))
       )

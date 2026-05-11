@@ -55,20 +55,16 @@
       ),
       el('div', { class: 'li-foot' },
         el('button', { class: 'btn btn-sm', onClick: () => openEditModal(script) }, '编辑'),
-        el('button', {
-          class: 'btn btn-sm', disabled: !!pred,
-          title: pred ? '已有预测——稿子内容不能再改（违反 immutable）' : '',
+        !pred && el('button', { class: 'btn btn-sm',
           onClick: () => App.navigate('score', { scriptId: script.id })
-        }, '🎯 打分'),
-        el('button', {
-          class: 'btn btn-sm', disabled: !!pred,
+        }, '🎯 看 AI 打分'),
+        !pred && el('button', { class: 'btn btn-sm btn-pulse',
           onClick: () => App.navigate('predict', { scriptId: script.id })
-        }, '🔮 启动预测'),
-        pred && el('button', {
-          class: 'btn btn-sm', onClick: () => App.navigate('predict', { view: pred.id })
-        }, '查看预测'),
-        el('button', {
-          class: 'btn btn-sm', disabled: !!pred,
+        }, '🚀 启动预测'),
+        pred && el('button', { class: 'btn btn-sm btn-pulse',
+          onClick: () => App.navigate('predict', { view: pred.id })
+        }, '查看预测 →'),
+        !pred && el('button', { class: 'btn btn-sm',
           onClick: () => UI.confirm({
             title: '删除稿子？', danger: true, confirmText: '删除',
             body: '一旦写过预测，原稿不可删（immutable 链）。当前可删。',

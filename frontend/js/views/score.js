@@ -39,7 +39,7 @@
     const compositeEl = el('div', { class: 'composite-value' }, '0.00');
     const compositeBox = el('div', { class: 'composite-box' },
       el('div', {},
-        el('div', { class: 'composite-label' }, `${rubric.name} · 启发式自动`),
+        el('div', { class: 'composite-label' }, `${rubric.name} · 🤖 启发式自动评分`),
         el('div', { class: 'composite-formula' }, rubric.formula)
       ),
       compositeEl
@@ -54,19 +54,11 @@
     }
 
     const dimRows = rubric.dimensions.map(d => dimRow(d, scores, autoScores, recompute));
-    dimRows.forEach((r, i) => {
-      const k = rubric.dimensions[i].key;
-      const v = scores[k];
-      const btn = r.querySelectorAll('.score-btn')[v];
-      if (btn) btn.classList.add('active');
-    });
     recompute();
 
     const previewBox = el('div', { class: 'card' },
       el('div', { class: 'card-title' }, '📄 稿子预览',
-        el('span', { class: 'badge', style: { marginLeft: '6px' } }, `${script.content.length} 字`),
-        el('button', { class: 'btn btn-sm', style: { marginLeft: 'auto' },
-          onClick: () => App.navigate('predict', { scriptId: script.id }) }, '→ 启动预测')
+        el('span', { class: 'badge', style: { marginLeft: '6px' } }, `${script.content.length} 字`)
       ),
       el('div', { class: 'mono', style: { whiteSpace: 'pre-wrap', fontSize: '12.5px',
         maxHeight: '420px', overflowY: 'auto', color: 'var(--text-dim)',
@@ -76,17 +68,30 @@
 
     const scoreCard = el('div', { class: 'card' },
       el('div', { class: 'card-title' }, '🤖 7 维自动评分',
-        el('span', { class: 'badge', style: { marginLeft: '6px' } }, '点数字调整 = 标 user_override')),
+        el('span', { class: 'badge', style: { marginLeft: '6px' } }, '默认 AI 值；不认同就点「✎ 覆写」')),
       ...dimRows,
       compositeBox,
       reasonOut
     );
 
+    const existing = State.getPrediction(script.id);
+
     root.append(header,
       el('div', { class: 'grid grid-2' }, scoreCard, previewBox),
-      el('div', { class: 'callout warn', style: { marginTop: '16px' } },
-        '⚠ 启发式评分仅是起点 — 不可代替你真正的判断。改得越多 → "+user_override" 字段越长 → 越能在复盘时诊断"用户直觉 vs 模型偏离"。'
-      )
+      existing
+        ? UI.nextCta({
+            label: '该稿子已锁定预测',
+            title: '查看 immutable 预测段',
+            btnText: '查看预测',
+            muted: true,
+            onGo: () => App.navigate('predict', { view: existing.id })
+          })
+        : UI.nextCta({
+            label: '下一步',
+            title: '把这份打分推进到「盲预测」 — 提交后 immutable',
+            btnText: '🚀 启动预测',
+            onGo: () => App.navigate('predict', { scriptId: script.id })
+          })
     );
   }
 
@@ -101,41 +106,27 @@
   }
 
   function dimRow(d, scores, autoScores, onChange) {
-    const btnEls = [];
-    const out = el('div', { class: 'dim-score-out' }, String(scores[d.key]));
-    const tag = el('span', { class: 'badge', style: { fontSize: '9.5px', marginLeft: '4px' } }, '🤖');
-    for (let i = 0; i <= 5; i++) {
-      btnEls.push(el('button', { class: 'score-btn', onClick: () => {
-        scores[d.key] = i;
-        btnEls.forEach((x, j) => x.classList.toggle('active', j === i));
-        out.textContent = i;
-        if (i !== autoScores[d.key]) {
-          tag.textContent = `✏️ ${autoScores[d.key]}→${i}`;
-          tag.className = 'badge accent';
-        } else {
-          tag.textContent = '🤖';
-          tag.className = 'badge';
-        }
-        tag.style.fontSize = '9.5px';
-        tag.style.marginLeft = '4px';
-        onChange();
-      } }, String(i)));
-    }
-    return el('div', {
+    const rowNode = el('div', {
       class: 'dim-row',
       title: d.hint + '\n\n锚点:\n• ' + d.anchors.join('\n• ')
-    },
+    });
+    const cell = UI.aiScoreCell(autoScores[d.key], (newVal) => {
+      scores[d.key] = newVal;
+      rowNode.classList.toggle('overridden', newVal !== autoScores[d.key]);
+      onChange();
+    });
+    rowNode.append(
       el('div', {},
-        el('div', {}, el('span', { class: 'dim-key' }, d.key), tag),
-        el('div', { class: 'dim-weight' }, '权重 ×' + d.weight)
+        el('div', { class: 'dim-key' }, d.key),
+        el('div', { class: 'dim-weight' }, '×' + d.weight)
       ),
       el('div', {},
-        el('div', { class: 'dim-name' }, d.name),
-        el('div', { class: 'dim-name-cn' }, d.name_cn + ' — ' + d.hint)
+        el('div', { class: 'dim-name' }, d.name + ' · ' + d.name_cn),
+        el('div', { class: 'dim-name-cn' }, d.hint)
       ),
-      el('div', { class: 'score-slider' }, ...btnEls),
-      out
+      cell.node
     );
+    return rowNode;
   }
 
   window.Views = window.Views || {};

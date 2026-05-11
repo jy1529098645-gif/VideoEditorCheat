@@ -155,13 +155,6 @@
     function recomputeComposite() {
       compositeEl.textContent = Rubric.composite(scores, rubric).toFixed(2);
     }
-    // initialise active to auto-scored values
-    dimRows.forEach((r, i) => {
-      const k = rubric.dimensions[i].key;
-      const v = scores[k];
-      const btn = r.querySelectorAll('.score-btn')[v];
-      if (btn) btn.classList.add('active');
-    });
     recomputeComposite();
 
     // ---- Step 2: bucket distribution ----
@@ -288,14 +281,7 @@
         ...dimRows,
         compBox
       ),
-      el('div', { class: 'card', style: { marginTop: '16px' } },
-        el('div', { class: 'card-title' }, '② 概率分布 — 押哪个 bucket'),
-        el('div', { class: 'hint', style: { marginBottom: '10px' } },
-          '勾"headline"指你押的 bucket（中枢值在该行设置）。所有 % 加起来必须 = 100。'
-          + 'Confidence 低时应该更平（30/30/20/15/5），不是更尖（5/40/45/8/2）。'),
-        ...bucketRows,
-        sumEl
-      ),
+      probDistCard(dist, bucketRows, sumEl, confidence),
       el('div', { class: 'card', style: { marginTop: '16px' } },
         el('div', { class: 'card-title' }, '③ 一句话 reason'),
         reasonInput
@@ -323,6 +309,49 @@
     );
   }
 
+  function probDistCard(dist, bucketRows, sumEl, confidence) {
+    // Lock-by-default: show a read-only summary; user toggles "Override" to edit.
+    let editing = false;
+    const card = el('div', { class: 'card', style: { marginTop: '16px' } });
+    const titleRow = el('div', { class: 'card-title' }, '② 概率分布',
+      el('span', { class: 'badge accent', style: { marginLeft: '6px' } }, '🤖 自动 (' + confidence.label + ')')
+    );
+    const toggleBtn = el('button', { class: 'score-override-btn', style: { marginLeft: 'auto' } }, '✎ 覆写');
+    titleRow.appendChild(toggleBtn);
+
+    const summary = el('div', { class: 'bucket-dist' });
+    function renderSummary() {
+      UI.clear(summary);
+      dist.forEach(b => {
+        summary.appendChild(el('div', { class: 'bucket-row' },
+          el('div', { class: 'bucket-name' + (b.headline ? ' headline' : '') }, b.range + (b.headline ? ' ★' : '')),
+          el('div', { class: 'bucket-bar-wrap' },
+            el('div', { class: 'bucket-bar' + (b.headline ? ' headline' : ''), style: { width: b.percent + '%' } })),
+          el('div', { class: 'bucket-value' }, b.percent + '%')
+        ));
+      });
+    }
+    const editor = el('div', { style: { display: 'none' } },
+      el('div', { class: 'hint', style: { marginBottom: '10px' } },
+        '勾 headline 指你押的 bucket（中枢值在该行设置）。所有 % 加起来 = 100。'
+        + 'Confidence 低时应该更平（30/30/20/15/5），不是更尖（5/40/45/8/2）。'),
+      ...bucketRows, sumEl
+    );
+
+    toggleBtn.addEventListener('click', () => {
+      editing = !editing;
+      summary.style.display = editing ? 'none' : 'flex';
+      editor.style.display = editing ? 'block' : 'none';
+      toggleBtn.textContent = editing ? '✕ 关闭覆写' : '✎ 覆写';
+      toggleBtn.classList.toggle('active', editing);
+      if (!editing) renderSummary();
+    });
+
+    renderSummary();
+    card.append(titleRow, summary, editor);
+    return card;
+  }
+
   function metaTile(label, value, kind) {
     return el('div', { class: 'stat' + (kind ? ' ' + kind : '') },
       el('div', { class: 'stat-label' }, label),
@@ -331,43 +360,29 @@
   }
 
   function dimRow(d, scores, autoScores, overrides, onChange) {
-    const btnEls = [];
-    const out = el('div', { class: 'dim-score-out' }, String(scores[d.key]));
-    const tag = el('span', { class: 'badge', style: { fontSize: '9.5px', marginLeft: '4px' } }, '🤖');
-    for (let i = 0; i <= 5; i++) {
-      btnEls.push(el('button', { class: 'score-btn', onClick: () => {
-        scores[d.key] = i;
-        btnEls.forEach((x, j) => x.classList.toggle('active', j === i));
-        out.textContent = i;
-        if (i !== autoScores[d.key]) {
-          overrides[d.key] = { from: autoScores[d.key], to: i };
-          tag.textContent = '✏️ overridden';
-          tag.className = 'badge accent';
-          tag.style.fontSize = '9.5px';
-          tag.style.marginLeft = '4px';
-        } else {
-          delete overrides[d.key];
-          tag.textContent = '🤖';
-          tag.className = 'badge';
-        }
-        onChange();
-      } }, String(i)));
-    }
-    return el('div', {
+    const rowNode = el('div', {
       class: 'dim-row',
       title: d.hint + '\n\n锚点:\n• ' + d.anchors.join('\n• ')
-    },
+    });
+    const cell = UI.aiScoreCell(autoScores[d.key], (newVal, isOverride) => {
+      scores[d.key] = newVal;
+      if (isOverride) overrides[d.key] = { from: autoScores[d.key], to: newVal };
+      else delete overrides[d.key];
+      rowNode.classList.toggle('overridden', isOverride);
+      onChange();
+    });
+    rowNode.append(
       el('div', {},
-        el('div', {}, el('span', { class: 'dim-key' }, d.key), tag),
+        el('div', { class: 'dim-key' }, d.key),
         el('div', { class: 'dim-weight' }, '×' + d.weight)
       ),
       el('div', {},
-        el('div', { class: 'dim-name' }, d.name),
-        el('div', { class: 'dim-name-cn' }, d.name_cn)
+        el('div', { class: 'dim-name' }, d.name + ' · ' + d.name_cn),
+        el('div', { class: 'dim-name-cn' }, d.hint)
       ),
-      el('div', { class: 'score-slider' }, ...btnEls),
-      out
+      cell.node
     );
+    return rowNode;
   }
 
   function bucketRow(b, idx, dist, onChange) {
@@ -428,13 +443,26 @@
         el('p', { class: 'muted', style: { fontSize: '12px' } },
           `Article ID: ${p.id} · rubric ${p.rubricVersion} · ${p.confidence.label} (校准 ${p.calibrationSamples}/5)`)
       ),
-      el('div', { class: 'row gap-sm' },
-        !p.shot && el('button', { class: 'btn', onClick: () => doShoot(p) }, '🎬 已拍'),
-        p.shot && !p.published && el('button', { class: 'btn', onClick: () => doPublish(p) }, '🚀 已发布'),
-        p.published && !p.retro && el('button', { class: 'btn btn-primary', onClick: () => App.navigate('retro', { id: p.id }) }, '📈 写复盘'),
-        el('button', { class: 'btn btn-ghost', onClick: () => render() }, '← 返回列表')
-      )
+      el('button', { class: 'btn btn-ghost', onClick: () => render() }, '← 返回列表')
     );
+
+    // Big next-step CTA — what comes next in the lifecycle for this prediction
+    const since = p.publishedAt ? UI.daysSince(p.publishedAt) : null;
+    const retroDays = State.get().settings.retroWindowDays;
+    let nextStep = null;
+    if (!p.shot) {
+      nextStep = UI.nextCta({ label: '下一步', title: '稿子拍完了？登记 — buffer +1', btnText: '🎬 标记为已拍', onGo: () => doShoot(p) });
+    } else if (!p.published) {
+      nextStep = UI.nextCta({ label: '下一步', title: '已发布了？记录链接 — buffer -1', btnText: '🚀 标记为已发', onGo: () => doPublish(p) });
+    } else if (!p.retro) {
+      if (since >= retroDays) {
+        nextStep = UI.nextCta({ label: '下一步', title: `T+${since}d，数据可以抓了 — 跑复盘`, btnText: '📈 写复盘', onGo: () => App.navigate('retro', { id: p.id }) });
+      } else {
+        nextStep = UI.nextCta({ label: '等待中', title: `已发 T+${since}d · 还差 ${retroDays - since}d 才能复盘`, btnText: '看候选池', muted: true, onGo: () => App.navigate('candidates') });
+      }
+    } else {
+      nextStep = UI.nextCta({ label: '本作品已闭环', title: '看候选池里下一题 / 拍下一条', btnText: '🔥 看候选池', muted: true, onGo: () => App.navigate('candidates') });
+    }
 
     const banner = el('div', { class: 'immutable-banner' }, '🔒 此预测段是 immutable —— hook 已拦截所有编辑。仅可向"复盘"段追加。');
 
@@ -506,7 +534,7 @@
         el('a', { href: p.publishUrl, target: '_blank' }, p.publishUrl))
     );
 
-    root.append(header, banner, lifecycle,
+    root.append(header, nextStep, banner, lifecycle,
       el('div', { style: { height: '16px' } }),
       el('div', { class: 'grid grid-2' },
         el('div', { class: 'card' },
