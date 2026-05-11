@@ -117,10 +117,9 @@
 
     // Loading state if calling Claude
     if (useClaude) {
-      root.append(el('div', { class: 'card' },
-        el('div', { class: 'card-title' }, '🤖 ' + window.Claude.getModel() + ' 评分中…'),
-        el('div', { class: 'muted', style: { fontSize: '13px' } },
-          '正在让 Claude 基于 rubric + 25+ 样本评分 + 生成预测组件。一次大约 5-10 秒。')
+      root.append(UI.loadingBlock(
+        `🤖 ${window.Claude.getModel()} 评分中…`,
+        '基于 rubric + 25+ 锚点样本 生成 7 维分 / 概率分布 / 推理因素，约 5-10 秒'
       ));
     }
 

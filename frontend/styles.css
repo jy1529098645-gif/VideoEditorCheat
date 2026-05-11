@@ -45,6 +45,52 @@ body {
   height: 100vh;
 }
 
+/* Mobile: sidebar slides over content, toggle button in topbar */
+@media (max-width: 720px) {
+  #app { grid-template-columns: 1fr; }
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 240px;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: 0 0 30px rgba(0,0,0,0.5);
+  }
+  body.sidebar-open .sidebar { transform: translateX(0); }
+  body.sidebar-open::before {
+    content: "";
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 49;
+    animation: fadeIn 0.15s;
+  }
+  .topbar { padding: 12px 14px; }
+  .topbar-title h1 { font-size: 17px; }
+  .topbar-title p { font-size: 11px; }
+  .topbar-actions .btn { padding: 6px 10px; font-size: 12px; }
+  .view { padding: 14px 14px 60px; }
+  .menu-toggle { display: flex !important; }
+  .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr !important; }
+  .stat-value { font-size: 22px; }
+  .dim-row { grid-template-columns: 56px 1fr; gap: 8px; }
+  .dim-row .ai-score-cell { grid-column: 1 / -1; justify-content: flex-end; }
+}
+
+.menu-toggle {
+  display: none;
+  width: 36px; height: 36px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 18px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+}
+
 /* ============ Sidebar ============ */
 .sidebar {
   background: var(--bg-elev);
@@ -797,6 +843,35 @@ body {
   color: var(--text-dim);
 }
 .next-cta.muted-cta .next-cta-btn:hover { color: var(--text); }
+
+/* Spinner */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+}
+.spinner.lg { width: 28px; height: 28px; border-width: 3px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-block {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 22px;
+  background: linear-gradient(90deg, var(--accent-soft) 0%, transparent 100%);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+}
+.loading-block .spinner { flex: 0 0 auto; }
+.loading-block-text { flex: 1; }
+.loading-block-title { font-weight: 500; font-size: 14px; color: var(--accent); }
+.loading-block-sub { font-size: 12.5px; color: var(--text-dim); margin-top: 4px; }
 
 /* Pulsing highlight for current-step button in lists */
 .btn-pulse {

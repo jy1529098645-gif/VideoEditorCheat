@@ -59,7 +59,20 @@
 
   function wireUi() {
     document.querySelectorAll('.nav-item').forEach(btn => {
-      btn.addEventListener('click', () => navigate(btn.dataset.view));
+      btn.addEventListener('click', () => {
+        navigate(btn.dataset.view);
+        document.body.classList.remove('sidebar-open');
+      });
+    });
+
+    const toggle = document.getElementById('menu-toggle');
+    if (toggle) toggle.addEventListener('click', () => {
+      document.body.classList.toggle('sidebar-open');
+    });
+    document.addEventListener('click', e => {
+      if (!document.body.classList.contains('sidebar-open')) return;
+      if (e.target.closest('.sidebar') || e.target.closest('.menu-toggle')) return;
+      document.body.classList.remove('sidebar-open');
     });
 
     document.getElementById('btn-export').addEventListener('click', () => {

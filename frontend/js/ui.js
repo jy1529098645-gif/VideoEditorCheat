@@ -33,12 +33,23 @@
   function modal({ title, body, footer, onClose, wide }) {
     const root = document.getElementById('modal-root');
     clear(root);
-    const close = () => { clear(root); if (onClose) onClose(); };
+    let closed = false;
+    function close() {
+      if (closed) return;
+      closed = true;
+      document.removeEventListener('keydown', escHandler);
+      clear(root);
+      if (onClose) onClose();
+    }
+    function escHandler(e) {
+      if (e.key === 'Escape') { e.preventDefault(); close(); }
+    }
+    document.addEventListener('keydown', escHandler);
     const bg = el('div', { class: 'modal-bg', onClick: e => { if (e.target === bg) close(); } },
       el('div', { class: 'modal', style: wide ? { maxWidth: '820px' } : {} },
         el('div', { class: 'modal-head' },
           el('h3', {}, title),
-          el('button', { class: 'close-btn', onClick: close }, '×')
+          el('button', { class: 'close-btn', onClick: close, title: 'Esc 关闭' }, '×')
         ),
         el('div', { class: 'modal-body' }, body),
         footer && el('div', { class: 'modal-foot' }, footer)
@@ -155,6 +166,17 @@
     return { node, getValue: () => val, isOverridden: () => val !== autoVal };
   }
 
+  // ============ Loading block ============
+  function loadingBlock(title, sub) {
+    return el('div', { class: 'loading-block' },
+      el('span', { class: 'spinner lg' }),
+      el('div', { class: 'loading-block-text' },
+        el('div', { class: 'loading-block-title' }, title),
+        sub && el('div', { class: 'loading-block-sub' }, sub)
+      )
+    );
+  }
+
   // ============ Next-step CTA banner ============
   function nextCta({ label, title, btnText, onGo, muted }) {
     return el('div', { class: 'next-cta' + (muted ? ' muted-cta' : '') },
@@ -166,5 +188,5 @@
     );
   }
 
-  window.UI = { el, clear, toast, modal, confirm, fmt, fmtPlays, fmtPct, fmtDate, fmtDateTime, daysSince, aiScoreCell, aiScoreReadonly, nextCta };
+  window.UI = { el, clear, toast, modal, confirm, fmt, fmtPlays, fmtPct, fmtDate, fmtDateTime, daysSince, aiScoreCell, aiScoreReadonly, nextCta, loadingBlock };
 })();

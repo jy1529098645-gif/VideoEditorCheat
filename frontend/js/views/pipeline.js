@@ -32,7 +32,7 @@
       '推荐：buffer ≥ 2 时心态稳；buffer = 0 时节奏会断。'
     );
 
-    // Big next-action CTA based on what's actionable right now
+    // Big next-action CTA — every button advances the workflow concretely
     let cta = null;
     const readyToRetro = published.find(p => daysSince(p.publishedAt) >= s.settings.retroWindowDays);
     if (readyToRetro) {
@@ -43,20 +43,21 @@
         onGo: () => App.navigate('retro', { id: readyToRetro.id })
       });
     } else if (shot.length > 0) {
+      // oldest shot = most ready to publish
+      const oldest = [...shot].sort((a, b) => new Date(a.shotAt) - new Date(b.shotAt))[0];
       cta = UI.nextCta({
         label: '下一步',
-        title: `${shot.length} 条已拍未发 — 准备好就标记发布`,
-        btnText: '🚀 看待发列表',
-        onGo: () => {}, // already on pipeline view
-        muted: true
+        title: `「${oldest.title}」 已拍 ${daysSince(oldest.shotAt) || 0}d — 标记发布释放 buffer`,
+        btnText: '🚀 标记为已发',
+        onGo: () => doPublish(oldest)
       });
     } else if (predicted.length > 0) {
+      const oldest = [...predicted].sort((a, b) => new Date(a.predictedAt) - new Date(b.predictedAt))[0];
       cta = UI.nextCta({
         label: '下一步',
-        title: `${predicted.length} 条已锁预测 · 等你去拍`,
-        btnText: '🎬 看待拍列表',
-        onGo: () => {},
-        muted: true
+        title: `「${oldest.title}」 已锁预测 · 拍完就标记`,
+        btnText: '🎬 标记为已拍',
+        onGo: () => doShoot(oldest)
       });
     } else if (s.predictions.length === 0) {
       cta = UI.nextCta({

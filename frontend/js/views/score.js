@@ -35,9 +35,9 @@
     }
 
     if (useClaude) {
-      root.append(header, el('div', { class: 'card' },
-        el('div', { class: 'card-title' }, '🤖 Claude 评分中…'),
-        el('div', { class: 'muted', style: { fontSize: '13px' } }, '基于 rubric + 25+ 样本评分，约 5-10 秒')
+      root.append(header, UI.loadingBlock(
+        `🤖 ${window.Claude.getModel()} 评分中…`,
+        '基于 rubric + 25+ 锚点样本判分，约 5-10 秒'
       ));
     }
     const result = await Scorer.autoScore(script.content);
