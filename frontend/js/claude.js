@@ -73,21 +73,55 @@
     return { text, usage, raw: data };
   }
 
+  // Walk JSON and escape any " that appears inside a string value but isn't
+  // a legitimate close. Determines "close" by looking ahead to next non-space:
+  // if it's : , } ] (or EOF), the " is closing the string; otherwise it's a
+  // stray inner quote → escape it.
+  function repairUnescapedQuotes(s) {
+    let out = '';
+    let inString = false;
+    let escapeNext = false;
+    for (let i = 0; i < s.length; i++) {
+      const c = s[i];
+      if (escapeNext) { out += c; escapeNext = false; continue; }
+      if (c === '\\') { out += c; escapeNext = true; continue; }
+      if (c !== '"') { out += c; continue; }
+      if (!inString) { inString = true; out += c; continue; }
+      // we're at " inside a string — look ahead
+      let j = i + 1;
+      while (j < s.length && /\s/.test(s[j])) j++;
+      const next = s[j];
+      if (next === undefined || next === ',' || next === '}' || next === ']' || next === ':') {
+        inString = false;
+        out += c;
+      } else {
+        out += '\\"';
+      }
+    }
+    return out;
+  }
+
   function parseJson(text) {
     let t = (text || '').trim();
-    // Strip markdown fences
     if (t.startsWith('```')) {
       t = t.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
     }
-    // Extract the first {...} object if there's leading explanation text
     const m = t.match(/\{[\s\S]*\}/);
     if (m) t = m[0];
     try {
       return JSON.parse(t);
-    } catch (e) {
-      const err = new Error('Claude 返回的 JSON 解析失败：' + e.message + ' / 原文片段：' + (text || '').slice(0, 200));
-      window._lastClaudeError = { kind: 'parse', message: err.message, raw: text };
-      throw err;
+    } catch (e1) {
+      // Retry with repair pass — fixes the common case of unescaped ASCII " inside Chinese reason strings
+      try {
+        const repaired = repairUnescapedQuotes(t);
+        const parsed = JSON.parse(repaired);
+        console.warn('Claude JSON had unescaped inner quotes, auto-repaired.');
+        return parsed;
+      } catch (e2) {
+        const err = new Error('Claude 返回的 JSON 解析失败：' + e1.message + ' / 原文片段：' + (text || '').slice(0, 200));
+        window._lastClaudeError = { kind: 'parse', message: err.message, raw: text };
+        throw err;
+      }
     }
   }
 

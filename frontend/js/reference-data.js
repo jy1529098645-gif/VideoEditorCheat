@@ -163,7 +163,7 @@ ${ANCHOR_SAMPLES}
    - factors: array of {factor, direction, confidence, note} — 列出 2-4 个最影响 composite 的维度
    - closest_anchor: 哪个 anchor 样本最相似？为什么？
 
-# 严格的输出格式（只输出 JSON，不要 markdown 代码块包装）
+# 严格的输出格式（只输出 JSON 对象本体，不要 markdown 代码块、不要前后任何解释文字）
 
 {
   "scores": { "ER": 0, "SR": 0, "HP": 0, "QL": 0, "NA": 0, "AB": 0, "SAT": 0 },
@@ -173,6 +173,15 @@ ${ANCHOR_SAMPLES}
   ],
   "closest_anchor": "..."
 }
+
+# JSON 格式硬约束（违反会导致解析失败）
+- **绝对不要在字符串值内部使用 ASCII 双引号 `"`**。如果你要在 reason / note / closest_anchor 中引用某个词或句子，**用中文引号 `「」` 或 `『』` 或单引号 `'`**。
+  ❌ 错: "reason": "ER 靠"数字难民"共鸣"  → 这会让 JSON 炸掉
+  ✅ 对: "reason": "ER 靠「数字难民」共鸣"
+- 所有字符串里不要换行符
+- factor 字段只能是 `ER` / `SR` / `HP` / `QL` / `NA` / `AB` / `SAT` 之一（大写字母）
+- direction 只能是 `强 +` / `中 +` / `弱 ?` / `强 -` / `中 -` 之一
+- confidence 只能是 `高` / `中` / `低` 之一
 
 # 评分纪律
 - 保守偏置——不确定时往中位偏，不要为了"分数好看"虚高
@@ -200,7 +209,7 @@ ${ANCHOR_SAMPLES}
 4. 对每个高置信度 reasoning factor 做验证 — 方向对吗？
 5. 提取关键模因 / 评论 pattern（如果 commentKeywords 给了）
 
-# 严格的输出格式（只输出 JSON，不要 markdown 代码块）
+# 严格的输出格式（只输出 JSON 对象本体，不要 markdown 代码块、不要前后任何解释文字）
 
 {
   "verified": [
@@ -215,6 +224,11 @@ ${ANCHOR_SAMPLES}
   "deviation": "high|low|on-target",
   "summary": "≤50字总结"
 }
+
+# JSON 格式硬约束
+- **绝对不要在字符串值内部使用 ASCII 双引号 `"`**。引用某个词/句子用中文引号 `「」`、`『』` 或单引号 `'`。
+- bullet 字符串内不要换行符
+- deviation 只能是 `high` / `low` / `on-target` 之一
 
 # 复盘纪律
 - 每条 bullet 必须引用具体数据（"分播比 2.53%"），不许"基本符合"这种含糊措辞
