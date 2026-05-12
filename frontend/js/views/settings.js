@@ -96,6 +96,44 @@
         }
       } }, '🔌 测试连接');
 
+      const diagBtn = el('button', { class: 'btn', onClick: async () => {
+        if (!window.Claude.getKey()) { UI.toast('先填 key', 'error'); return; }
+        setStatus('🔄 诊断中…');
+        const report = await window.Claude.diagnose();
+        setStatus('诊断完成 — 看下方日志', 'yellow');
+        UI.modal({
+          title: '🩺 Claude API 诊断报告',
+          wide: true,
+          body: el('div', {},
+            el('div', { class: 'muted', style: { fontSize: '12px', marginBottom: '10px' } },
+              '复制下面这段贴给我，能精确定位问题。'),
+            el('pre', {
+              style: {
+                background: 'var(--bg)',
+                border: '1px solid var(--border)',
+                borderRadius: '6px',
+                padding: '14px',
+                fontSize: '12px',
+                lineHeight: '1.6',
+                maxHeight: '50vh',
+                overflowY: 'auto',
+                whiteSpace: 'pre-wrap',
+                fontFamily: 'var(--mono)',
+                color: 'var(--text)'
+              }
+            }, report)
+          ),
+          footer: el('div', { class: 'row gap-sm' },
+            el('button', { class: 'btn', onClick: () => {
+              navigator.clipboard.writeText(report);
+              UI.toast('已复制', 'success');
+            } }, '📋 复制'),
+            el('button', { class: 'btn btn-primary',
+              onClick: () => document.getElementById('modal-root').innerHTML = '' }, '关闭')
+          )
+        });
+      } }, '🩺 详细诊断');
+
       const clearBtn = el('button', { class: 'btn btn-ghost', onClick: () => {
         window.Claude.setKey('');
         UI.toast('已清除 key', 'success');
@@ -122,7 +160,7 @@
             el('div', { class: 'hint' }, '推荐 Sonnet 4.6 — 性价比最高')
           )
         ),
-        el('div', { class: 'row gap-sm' }, testBtn, currentKey && clearBtn),
+        el('div', { class: 'row gap-sm' }, testBtn, diagBtn, currentKey && clearBtn),
         status,
         el('div', { class: 'callout', style: { marginTop: '14px', padding: '10px 14px' } },
           el('div', { style: { fontSize: '12.5px' } },

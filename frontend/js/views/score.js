@@ -74,7 +74,20 @@
     const sourceBadge = scoringSource === 'claude'
       ? el('span', { class: 'badge accent', style: { marginLeft: '6px' } }, '🤖 Claude')
       : scoringSource === 'heuristic-fallback'
-      ? el('span', { class: 'badge yellow', style: { marginLeft: '6px' } }, '⚠ Claude 失败，启发式')
+      ? el('span', { class: 'badge yellow', style: { marginLeft: '6px', cursor: 'pointer' },
+          title: result.error || '',
+          onClick: () => UI.modal({
+            title: '⚠ Claude 调用失败 — 已回退到启发式',
+            body: UI.el('div', {},
+              UI.el('div', { class: 'mono', style: { fontSize: '12.5px', background: 'var(--bg)', padding: '12px', borderRadius: '6px', whiteSpace: 'pre-wrap' } },
+                result.error || '(无错误信息)'),
+              UI.el('div', { style: { fontSize: '12.5px', marginTop: '10px', color: 'var(--text-dim)' } },
+                '去「设置」点🩺 详细诊断查完整报告')
+            ),
+            footer: UI.el('button', { class: 'btn btn-primary',
+              onClick: () => document.getElementById('modal-root').innerHTML='' }, '懂了')
+          })
+        }, '⚠ Claude 失败，启发式（点查看）')
       : el('span', { class: 'badge', style: { marginLeft: '6px' } }, '🔧 启发式（未配 key）');
     const scoreCard = el('div', { class: 'card' },
       el('div', { class: 'card-title' }, '7 维评分', sourceBadge),

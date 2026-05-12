@@ -146,14 +146,20 @@
     const scoringSource = scoringResult.source;
 
     // ---- Header + banner ----
+    const scoringError = scoringResult.error;
+    const isFallback = scoringSource === 'heuristic-fallback';
     const scorerLabel = scoringSource === 'claude'
       ? `🤖 Claude (${window.Claude.getModel()})`
-      : scoringSource === 'heuristic-fallback'
-      ? '⚠ Claude 调用失败，回退到本地启发式'
+      : isFallback
+      ? '⚠ Claude 失败，回退到本地启发式'
       : '🔧 本地启发式（未配置 Claude API key）';
-    const banner = el('div', { class: 'callout' },
+    const banner = el('div', { class: 'callout' + (isFallback ? ' warn' : '') },
       el('div', { class: 'callout-title' }, '已自动评分 · ' + scorerLabel),
-      el('div', {}, '7 维评分、composite、概率分布、bucket、一句话 reason、推理因素都由 AI 算出 — 不让你改是为了保留你直觉 vs AI 的偏离信号。'),
+      isFallback && el('div', { class: 'mono', style: { fontSize: '12px', marginTop: '6px', padding: '8px 10px', background: 'var(--bg)', borderRadius: '4px' } },
+        '错误：' + (scoringError || '(未知)')),
+      isFallback && el('div', { style: { marginTop: '6px', fontSize: '12.5px' } },
+        '去「设置 → Claude API → 🩺 详细诊断」看完整报告。'),
+      !isFallback && el('div', {}, '7 维评分、composite、概率分布、bucket、一句话 reason、推理因素都由 AI 算出 — 不让你改是为了保留你直觉 vs AI 的偏离信号。'),
       closestAnchor && el('div', { style: { marginTop: '6px' } },
         el('strong', {}, '最近 anchor 样本：'), closestAnchor),
       el('div', { style: { marginTop: '6px' } },
