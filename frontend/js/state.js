@@ -226,6 +226,7 @@
       confidence: data.confidence,
       scores: data.scores,
       autoScores: data.autoScores || null,
+      evidence: data.evidence || null,
       scoredBy: data.scoredBy || 'claude',
       userOverride: data.userOverride || null,
       composite: data.composite,

@@ -186,7 +186,8 @@
       ),
       el('div', { class: 'composite-value' }, composite.toFixed(2))
     );
-    const dimRows = rubric.dimensions.map(d => readonlyDimRow(d, scores));
+    const evidence = scoringResult.evidence || {};
+    const dimRows = rubric.dimensions.map(d => readonlyDimRow(d, scores, evidence));
 
     // ---- Step 2: bucket distribution (read-only) ----
     const distView = el('div', { class: 'bucket-dist' },
@@ -258,6 +259,7 @@
           confidence,
           scores: { ...scores },
           autoScores: { ...scores },
+          evidence: { ...evidence },
           composite,
           bucket: headlineBucket ? headlineBucket.range : '<5w',
           probDistribution: dist.map(b => ({ ...b })),
@@ -401,7 +403,8 @@
     );
   }
 
-  function readonlyDimRow(d, scores) {
+  function readonlyDimRow(d, scores, evidence) {
+    const ev = evidence && evidence[d.key];
     return el('div', {
       class: 'dim-row',
       title: d.hint + '\n\n锚点:\n• ' + d.anchors.join('\n• ')
@@ -414,7 +417,8 @@
         el('div', { class: 'dim-name' }, d.name + ' · ' + d.name_cn),
         el('div', { class: 'dim-name-cn' }, d.hint)
       ),
-      UI.aiScoreReadonly(scores[d.key])
+      UI.aiScoreReadonly(scores[d.key]),
+      ev && el('div', { class: 'dim-evidence' }, ev)
     );
   }
 
@@ -499,11 +503,20 @@
 
     const banner = el('div', { class: 'immutable-banner' }, '🔒 此预测段是 immutable —— hook 已拦截所有编辑。仅可向"复盘"段追加。');
 
-    // Scores readback — read-only AI badges
+    // Scores readback — read-only AI badges + evidence lines if present
     const scoreList = el('div', { class: 'row wrap', style: { gap: '6px' } },
       ...Object.entries(p.scores).map(([k, v]) =>
-        el('span', { class: 'badge outline' }, `🤖 ${k}=${v}/5`))
+        el('span', { class: 'badge outline',
+          title: p.evidence && p.evidence[k] ? p.evidence[k] : '' },
+          `🤖 ${k}=${v}/5`))
     );
+    const evidenceList = p.evidence && Object.keys(p.evidence).length > 0
+      ? el('div', { class: 'stack mt-lg', style: { gap: '6px' } },
+          el('div', { class: 'label' }, '📍 评分依据 (per-dim)'),
+          ...Object.entries(p.evidence).map(([k, v]) =>
+            el('div', { class: 'dim-evidence' },
+              el('strong', { style: { color: 'var(--accent)' } }, k + ' '), v)))
+      : null;
     const scoredByBadge = el('div', { class: 'mt', style: { fontSize: '12px' } },
       el('span', { class: 'muted' }, 'Scored by: '),
       el('span', { class: 'badge' }, '🤖 AI auto')
@@ -570,6 +583,7 @@
           el('div', { class: 'card-title' }, '① 7 维评分 → composite'),
           scoreList,
           scoredByBadge,
+          evidenceList,
           el('div', { class: 'composite-box' },
             el('div', {},
               el('div', { class: 'composite-label' }, 'rubric ' + p.rubricVersion),

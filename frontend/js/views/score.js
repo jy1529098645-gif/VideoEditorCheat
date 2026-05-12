@@ -48,7 +48,8 @@
     const closestAnchor = result.closestAnchor;
     const scoringSource = result.source;
 
-    const dimRows = rubric.dimensions.map(d => dimRow(d, autoScores));
+    const evidence = result.evidence || {};
+    const dimRows = rubric.dimensions.map(d => dimRow(d, autoScores, evidence));
     const compositeBox = el('div', { class: 'composite-box' },
       el('div', {},
         el('div', { class: 'composite-label' }, `${rubric.name} · 🤖 启发式自动`),
@@ -129,7 +130,8 @@
     );
   }
 
-  function dimRow(d, scores) {
+  function dimRow(d, scores, evidence) {
+    const ev = evidence && evidence[d.key];
     return el('div', {
       class: 'dim-row',
       title: d.hint + '\n\n锚点:\n• ' + d.anchors.join('\n• ')
@@ -142,7 +144,8 @@
         el('div', { class: 'dim-name' }, d.name + ' · ' + d.name_cn),
         el('div', { class: 'dim-name-cn' }, d.hint)
       ),
-      UI.aiScoreReadonly(scores[d.key])
+      UI.aiScoreReadonly(scores[d.key]),
+      ev && el('div', { class: 'dim-evidence' }, ev)
     );
   }
 

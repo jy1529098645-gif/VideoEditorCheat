@@ -17,6 +17,12 @@
     return m ? m.length : 0;
   }
 
+  function matchedSamples(text, regex, max = 3) {
+    const m = (text || '').match(regex);
+    if (!m) return [];
+    return Array.from(new Set(m)).slice(0, max);
+  }
+
   // Each dimension scored 0–5 based on text features.
   // Conservative bias: when uncertain, return 2–3 (middle).
   function scoreText(text) {
@@ -80,6 +86,52 @@
     if (SAT === 0) SAT = 1;
 
     return { ER, SR, HP, QL, NA, AB, SAT };
+  }
+
+  function scoreEvidence(text) {
+    const t = String(text || '');
+    const emo = matchedSamples(t, EMOTION_WORDS);
+    const refl = matchedSamples(t, REFLECTIVE);
+    const soc = matchedSamples(t, SOCIETAL);
+    const uni = matchedSamples(t, UNIVERSAL);
+    const narr = matchedSamples(t, NARRATIVE_MARKERS);
+    const irony = matchedSamples(t, IRONY_MARKERS);
+    const sentences = t.split(/[。！？!?]/).map(s => s.trim()).filter(Boolean);
+    const quotableSamples = sentences.filter(s =>
+      s.length >= 6 && s.length <= 35 &&
+      (/(不是.{1,15}是|的本质是|说白了就是|其实是|我们都|从来不是|根本不是)/.test(s) || /^[「『""]/.test(s))
+    ).slice(0, 2);
+    const firstPara = ((t.split(/\n+/)[0]) || '').slice(0, 80);
+    const genericOpen = GENERIC_OPENINGS.test(firstPara.trim());
+    const hasList = /^[0-9一二三四五]\.|^[•\-*]\s/m.test(t);
+
+    return {
+      ER: emo.length || refl.length
+        ? `情感词命中: ${emo.slice(0, 3).join('/') || '无'} · 反思人称: ${refl.slice(0, 2).join('/') || '无'}`
+        : '无情感词、无反思人称 → 0-2',
+      SR: soc.length
+        ? `结构性议题词: ${soc.slice(0, 3).join('/')}`
+        : '无明显社会议题词 → 0-1',
+      HP: genericOpen
+        ? `开场使用通用模式：「${firstPara.slice(0, 20)}…」 → 0-1`
+        : firstPara
+          ? `开场: 「${firstPara.slice(0, 40)}…」 ${firstPara.length >= 30 ? '具体' : '偏短'}`
+          : '空开场',
+      QL: quotableSamples.length
+        ? `可截图句: 「${quotableSamples.map(s => s.slice(0, 20)).join('」、「')}」`
+        : '未识别金句句式',
+      NA: hasList
+        ? `检测到列表结构 → NA 偏低`
+        : narr.length
+        ? `叙事 marker: ${narr.slice(0, 3).join('/')}`
+        : '无明显叙事 marker',
+      AB: uni.length
+        ? `普世主题词: ${uni.slice(0, 3).join('/')}`
+        : '主题偏小众',
+      SAT: irony.length
+        ? `反讽 marker: ${irony.slice(0, 2).join(' ')}`
+        : '真诚直陈，无反讽信号'
+    };
   }
 
   // Bucket prediction from composite. Maps composite to one of the 5 buckets
@@ -220,8 +272,13 @@
     if (window.Claude && window.Claude.isEnabled()) {
       try {
         const res = await window.Claude.scoreScript(text);
+        // If Claude didn't return evidence, fill from heuristic so UI always has it
+        const evidence = res.evidence && Object.keys(res.evidence).length > 0
+          ? res.evidence
+          : scoreEvidence(text);
         return {
           scores: res.scores,
+          evidence,
           reason: res.reason || '',
           factors: res.factors || [],
           closestAnchor: res.closest_anchor || '',
@@ -241,7 +298,8 @@
     const scores = scoreText(text);
     return {
       scores,
-      reason: autoReason(scores, 0), // composite added by caller
+      evidence: scoreEvidence(text),
+      reason: autoReason(scores, 0),
       factors: autoFactors(scores),
       closestAnchor: null
     };
@@ -270,7 +328,7 @@
   }
 
   window.Scorer = {
-    scoreText, bucketFromComposite, distFromComposite,
+    scoreText, scoreEvidence, bucketFromComposite, distFromComposite,
     autoReason, autoFactors, autoRetroCompare,
     autoScore, autoRetro
   };

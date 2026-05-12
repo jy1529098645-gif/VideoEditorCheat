@@ -409,14 +409,29 @@ body {
 /* ============ Rubric Scoring ============ */
 .dim-row {
   display: grid;
-  grid-template-columns: 70px 1fr 240px;
+  grid-template-columns: 70px 1fr 180px;
   gap: 14px;
-  align-items: center;
+  align-items: start;
   padding: 12px 14px;
   background: var(--bg);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
   margin-bottom: 6px;
+}
+.dim-evidence {
+  grid-column: 1 / -1;
+  font-size: 11.5px;
+  color: var(--text-dim);
+  line-height: 1.55;
+  margin-top: 8px;
+  padding: 7px 10px;
+  background: var(--bg-elev);
+  border-left: 2px solid var(--accent);
+  border-radius: 3px;
+}
+.dim-evidence::before {
+  content: "📍 ";
+  opacity: 0.65;
 }
 .dim-row.overridden {
   border-color: var(--accent);
